@@ -91,4 +91,35 @@ class MateriaModel
             ':id' => $id
         ]);
     }
+        public function existeMateria($nombre)
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT id_materia
+            FROM materias
+            WHERE nombre_materia = :nombre"
+        );
+
+        $stmt->execute([
+            ':nombre' => $nombre
+        ]);
+
+        return $stmt->fetch();
+    }
+        public function existeMateriaEditar($nombre, $id)
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT id_materia
+            FROM materias
+            WHERE nombre_materia = :nombre
+            AND id_materia <> :id"
+        );
+
+        $stmt->execute([
+            ':nombre' => $nombre,
+            ':id' => $id
+        ]);
+
+        return $stmt->fetch();
+    }
+
 }
