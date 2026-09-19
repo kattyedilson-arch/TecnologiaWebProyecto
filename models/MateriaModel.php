@@ -1,13 +1,24 @@
 <?php
+// =========================================================
+// MODELO: MATERIAS (MateriaModel.php)
+// ---------------------------------------------------------
+// Acceso a la tabla 'materias' de la base de datos.
+// Una materia pertenece a una carrera (opcional) y puede ser
+// impartida por uno o varios tutores académicos.
+// =========================================================
 class MateriaModel
 {
-    private $pdo;
+    private $pdo; // Conexión PDO compartida
 
     public function __construct($pdo)
     {
         $this->pdo = $pdo;
     }
 
+    /**
+     * Lista todas las materias junto a su carrera y cuántos tutores la imparten.
+     * @return array Lista de materias del catálogo
+     */
     public function obtenerTodas()
     {
         $sql = "SELECT m.id_materia, m.nombre_materia, m.id_carrera,
@@ -19,6 +30,11 @@ class MateriaModel
         return $this->pdo->query($sql)->fetchAll();
     }
 
+    /**
+     * Busca una materia por su identificador.
+     * @param int $id Identificador de la materia
+     * @return array|false Fila de la materia o false si no existe
+     */
     public function obtenerPorId($id)
     {
         $stmt = $this->pdo->prepare("SELECT * FROM materias WHERE id_materia = :id");
@@ -26,13 +42,29 @@ class MateriaModel
         return $stmt->fetch();
     }
 
+    /**
+     * Materias de una carrera específica, con su carrera (usado en formularios).
+     * @param int $id_carrera Identificador de la carrera
+     * @return array Materias de la carrera ordenadas alfabéticamente
+     */
     public function obtenerPorCarrera($id_carrera)
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM materias WHERE id_carrera = :id_carrera ORDER BY nombre_materia ASC");
+        $sql = "SELECT m.id_materia, m.nombre_materia, m.id_carrera,
+                       c.nombre_carrera
+                FROM materias m
+                LEFT JOIN carreras c ON m.id_carrera = c.id_carrera
+                WHERE m.id_carrera = :id_carrera
+                ORDER BY m.nombre_materia ASC";
+        $stmt = $this->pdo->prepare($sql);
         $stmt->execute([':id_carrera' => $id_carrera]);
         return $stmt->fetchAll();
     }
 
+    /**
+     * Crea una nueva materia.
+     * @param array $datos Arreglo con nombre_materia e id_carrera (opcional)
+     * @return bool True si la inserción fue exitosa
+     */
     public function crear($datos)
     {
         $stmt = $this->pdo->prepare("INSERT INTO materias (nombre_materia, id_carrera) VALUES (:nombre, :id_carrera)");
@@ -42,6 +74,12 @@ class MateriaModel
         ]);
     }
 
+    /**
+     * Actualiza los datos de una materia existente.
+     * @param int $id Identificador de la materia
+     * @param array $datos Arreglo con nombre_materia e id_carrera
+     * @return bool True si la actualización fue exitosa
+     */
     public function actualizar($id, $datos)
     {
         $stmt = $this->pdo->prepare("UPDATE materias SET nombre_materia = :nombre, id_carrera = :id_carrera WHERE id_materia = :id");
@@ -52,6 +90,11 @@ class MateriaModel
         ]);
     }
 
+    /**
+     * Elimina una materia del catálogo.
+     * @param int $id Identificador de la materia
+     * @return bool True si la eliminación fue exitosa (fallará si hay tutorías/tutores asociados)
+     */
     public function eliminar($id)
     {
         $stmt = $this->pdo->prepare("DELETE FROM materias WHERE id_materia = :id");

@@ -1,5 +1,16 @@
 <?php
+// =========================================================
+// CONTROLADOR: GESTIÓN DE TUTOR (tutores_disponibilidad.php)
+// ---------------------------------------------------------
+// Página de configuración del docente tutor: administra sus
+// bloques de disponibilidad semanal, las materias que imparte
+// y su perfil profesional (especialidad y biografía).
+//
+// Acceso: el tutor entra sin id (usa su propia sesión);
+// el administrador pasa ?id= para gestionar a cualquier tutor.
+// =========================================================
 require_once __DIR__ . '/../includes/verificar_sesion.php';
+require_once __DIR__ . '/../includes/funciones.php';
 require_once __DIR__ . '/../config/conexion.php';
 require_once __DIR__ . '/../models/TutorModel.php';
 require_once __DIR__ . '/../models/MateriaModel.php';
@@ -16,71 +27,121 @@ $idTutor = $_GET['id'] ?? null;
 if ($rolSesion === 'tutor') {
     $tutorActual = $tutorModel->obtenerPorUsuario($idUsuario);
     if ($tutorActual) {
-        $idTutor = $tutorActual['id_tutor'];
+        $idTutor = $tutorActual['id_tutor']; // El tutor siempre gestiona solo SU perfil
     }
 }
 
+// Sin un tutor identificado no hay nada que gestionar
 if (!$idTutor) {
-    header("Location: tutores_listar.php");
-    exit;
+    setMensaje('danger', 'No se encontró el perfil del tutor.');
+    redirigir($rolSesion === 'tutor' ? '../views/tutor/panel.php' : 'tutores_listar.php');
 }
 
+// El tutor indicado debe existir
 $tutor = $tutorModel->obtenerPorId($idTutor);
 if (!$tutor) {
-    header("Location: tutores_listar.php");
-    exit;
+    setMensaje('danger', 'El tutor solicitado no existe.');
+    redirigir($rolSesion === 'tutor' ? '../views/tutor/panel.php' : 'tutores_listar.php');
 }
 
-$mensaje = '';
 $errores = [];
+$diasValidos = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
 
-// Procesar acciones POST
+// ===== Procesar acciones POST (agregar horario, materias, perfil) =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Protección CSRF: la solicitud debe traer el token de la sesión
+    if (!verificarTokenCsrf()) {
+        setMensaje('danger', 'La solicitud expiró. Vuelve a intentarlo.');
+        redirigir($rolSesion === 'tutor' ? 'tutores_disponibilidad.php' : 'tutores_disponibilidad.php?id=' . $idTutor);
+    }
+
     $accion = $_POST['accion'] ?? '';
 
-    // 1. Agregar nuevo horario
+    // ---------------------------------------------------------
+    // ACCIÓN 1: Agregar nuevo bloque horario
+    // ---------------------------------------------------------
     if ($accion === 'agregar_horario') {
         $dia = $_POST['dia_semana'] ?? '';
         $inicio = $_POST['hora_inicio'] ?? '';
         $fin = $_POST['hora_fin'] ?? '';
 
-        if (!empty($dia) && !empty($inicio) && !empty($fin)) {
-            if ($inicio < $fin) {
-                $tutorModel->agregarDisponibilidad($idTutor, $dia, $inicio, $fin);
-                $mensaje = "Horario agregado correctamente.";
-            } else {
-                $errores[] = "La hora de fin debe ser mayor a la hora de inicio.";
-            }
-        } else {
+        // Validaciones del bloque horario
+        if (empty($dia) || empty($inicio) || empty($fin)) {
             $errores[] = "Todos los campos de horario son obligatorios.";
+        } elseif (!in_array($dia, $diasValidos, true)) {
+            $errores[] = "El día seleccionado no es válido.";
+        } elseif (!preg_match('/^(2[0-3]|[01][0-9]):[0-5][0-9]$/', $inicio) || !preg_match('/^(2[0-3]|[01][0-9]):[0-5][0-9]$/', $fin)) {
+            $errores[] = "El formato de las horas no es válido (usa HH:MM con horas entre 00 y 23).";
+        } elseif ($inicio >= $fin) {
+            $errores[] = "La hora de fin debe ser mayor a la hora de inicio.";
+        } elseif ($tutorModel->existeConflictoDisponibilidad($idTutor, $dia, $inicio, $fin)) {
+            // Se impide que dos bloques del mismo día se solapen
+            $errores[] = "Ya existe un bloque horario que se solapa con el que intentas agregar.";
+        } else {
+            $tutorModel->agregarDisponibilidad($idTutor, $dia, $inicio, $fin);
+            setMensaje('success', 'Bloque horario agregado correctamente.');
+            redirigir($rolSesion === 'tutor' ? 'tutores_disponibilidad.php' : 'tutores_disponibilidad.php?id=' . $idTutor);
         }
     }
 
-    // 2. Actualizar materias asignadas
+    // ---------------------------------------------------------
+    // ACCIÓN 2: Actualizar las materias asignadas al tutor
+    // ---------------------------------------------------------
     if ($accion === 'guardar_materias') {
         $materiasSeleccionadas = $_POST['materias'] ?? [];
-        $tutorModel->asignarMaterias($idTutor, $materiasSeleccionadas);
-        $mensaje = "Materias asignadas actualizadas con éxito.";
+
+        // Solo se guardan las materias que existan realmente en la BD
+        $idsValidos = [];
+        foreach ((array)$materiasSeleccionadas as $idMateria) {
+            if ($materiaModel->obtenerPorId((int)$idMateria)) {
+                $idsValidos[] = (int)$idMateria;
+            }
+        }
+
+        $tutorModel->asignarMaterias($idTutor, $idsValidos);
+        setMensaje('success', 'Materias asignadas actualizadas con éxito.');
+        redirigir($rolSesion === 'tutor' ? 'tutores_disponibilidad.php' : 'tutores_disponibilidad.php?id=' . $idTutor);
     }
 
-    // 3. Actualizar perfil básico (especialidad y biografía)
+    // ---------------------------------------------------------
+    // ACCIÓN 3: Actualizar perfil básico (especialidad y biografía)
+    // ---------------------------------------------------------
     if ($accion === 'actualizar_perfil') {
-        $esp = $_POST['especialidad'] ?? '';
-        $bio = $_POST['biografia'] ?? '';
-        $tutorModel->actualizarPerfil($idTutor, $esp, $bio);
-        $tutor = $tutorModel->obtenerPorId($idTutor);
-        $mensaje = "Perfil docente actualizado con éxito.";
+        $esp = limpiarTexto($_POST['especialidad'] ?? '');
+        $bio = trim($_POST['biografia'] ?? '');
+
+        // Límites de longitud para evitar datos excesivos
+        if (mb_strlen($esp) > 150) {
+            $errores[] = "La especialidad no puede superar los 150 caracteres.";
+        }
+        if (mb_strlen($bio) > 1000) {
+            $errores[] = "La biografía no puede superar los 1000 caracteres.";
+        }
+        if (empty($errores)) {
+            $tutorModel->actualizarPerfil($idTutor, $esp, $bio);
+            $tutor = $tutorModel->obtenerPorId($idTutor); // Refrescar datos en la vista
+            setMensaje('success', 'Perfil docente actualizado con éxito.');
+            redirigir($rolSesion === 'tutor' ? 'tutores_disponibilidad.php' : 'tutores_disponibilidad.php?id=' . $idTutor);
+        }
     }
 }
 
-// Eliminar horario por GET
+// ===== Eliminar un horario (GET con token de seguridad) =====
+// El enlace de la papelera pasa ?eliminar_horario=ID&token=...
 if (isset($_GET['eliminar_horario'])) {
+    // Protección CSRF antes de borrar el bloque
+    if (!verificarTokenCsrf()) {
+        setMensaje('danger', 'La solicitud expiró. Vuelve a intentarlo.');
+        redirigir($rolSesion === 'tutor' ? 'tutores_disponibilidad.php' : 'tutores_disponibilidad.php?id=' . $idTutor);
+    }
     $idDisp = (int)$_GET['eliminar_horario'];
+    // eliminarDisponibilidad verifica que el bloque pertenezca a este tutor
     $tutorModel->eliminarDisponibilidad($idDisp, $idTutor);
-    header("Location: tutores_disponibilidad.php?id=$idTutor&mensaje=horario_eliminado");
-    exit;
+    setMensaje('success', 'Bloque horario eliminado.');
+    redirigir($rolSesion === 'tutor' ? 'tutores_disponibilidad.php' : 'tutores_disponibilidad.php?id=' . $idTutor);
 }
 
+// Datos para renderizar la vista
 $materiasAsignadas = $tutorModel->obtenerMaterias($idTutor);
 $idsMateriasAsignadas = array_column($materiasAsignadas, 'id_materia');
 $todasMaterias = $materiaModel->obtenerTodas();

@@ -1,19 +1,31 @@
 <?php
+// =========================================================
+// VISTA: EDICIÓN DE MATERIA (views/materias/editar.php)
+// ---------------------------------------------------------
+// Formulario para modificar nombre o carrera de una materia.
+// $materia_actual trae los datos precargados y $carreras las
+// opciones del select. Errores del servidor en $errores.
+// =========================================================
 require_once __DIR__ . '/../../includes/verificar_sesion.php';
 $tituloPagina = 'Editar Materia - Sistema de Tutorías';
 include __DIR__ . '/../layouts/header.php';
 ?>
 
 <div class="row justify-content-center">
-  <div class="col-lg-7 col-xl-6">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <h3 class="fw-bold mb-0 d-flex align-items-center gap-2">
-        <i class="bi bi-pencil-square text-primary"></i>
-        <span>Editar Materia</span>
-      </h3>
-      <a href="materias_listar.php" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
-        <i class="bi bi-arrow-left"></i> Volver al listado
-      </a>
+  <div class="col-lg-8 col-xl-7">
+    <div class="hero-band p-4 mb-4">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+        <div>
+          <h3 class="fw-bold text-white mb-1 d-flex align-items-center gap-2">
+            <i class="bi bi-pencil-square"></i>
+            <span>Editar Materia</span>
+          </h3>
+          <p class="text-white-50 mb-0">Actualiza la información de la asignatura.</p>
+        </div>
+        <a href="materias_listar.php" class="btn btn-light d-flex align-items-center gap-1">
+          <i class="bi bi-arrow-left"></i> Volver al listado
+        </a>
+      </div>
     </div>
 
     <?php if (!empty($errores)): ?>
@@ -27,12 +39,16 @@ include __DIR__ . '/../layouts/header.php';
     <?php endif; ?>
 
     <div class="card card-custom p-4 p-md-5">
-      <form method="POST" autocomplete="off">
+      <form method="POST" autocomplete="off" class="needs-validation" novalidate>
+      <?= campoCsrf() ?>
         <input type="hidden" name="id_materia" value="<?= htmlspecialchars($materia_actual['id_materia']) ?>">
 
         <div class="mb-4">
           <label class="form-label fw-semibold text-secondary small text-uppercase">Nombre de la Materia *</label>
-          <input type="text" name="nombre_materia" class="form-control rounded-3 py-2" value="<?= htmlspecialchars($materia_actual['nombre_materia']) ?>" required>
+          <input type="text" name="nombre_materia" class="form-control rounded-3 py-2"
+                 value="<?= htmlspecialchars($materia_actual['nombre_materia']) ?>"
+                 minlength="3" maxlength="150" required>
+          <div class="invalid-feedback">El nombre debe tener al menos 3 caracteres.</div>
         </div>
 
         <div class="mb-4">
@@ -58,5 +74,16 @@ include __DIR__ . '/../layouts/header.php';
     </div>
   </div>
 </div>
+
+<script>
+  (() => {
+    const form = document.querySelector('.needs-validation');
+    if (!form) return;
+    form.addEventListener('submit', (e) => {
+      if (!form.checkValidity()) { e.preventDefault(); e.stopPropagation(); }
+      form.classList.add('was-validated');
+    }, false);
+  })();
+</script>
 
 <?php include __DIR__ . '/../layouts/footer.php'; ?>

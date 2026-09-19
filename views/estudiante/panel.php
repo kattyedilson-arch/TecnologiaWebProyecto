@@ -1,22 +1,60 @@
 <?php
+// =========================================================
+// VISTA: PANEL DEL ESTUDIANTE (views/estudiante/panel.php)
+// ---------------------------------------------------------
+// Autocontenida: arma sus propios datos (conexión + modelos).
+// Pasos:
+//   1. Recupera la ficha del estudiante en sesión; si no
+//      existe, la crea con valores por defecto.
+//   2. Carga sus tutorías y calcula contadores por estado.
+// La vista presenta la banda de bienvenida (carrera y
+// semestre), 4 métricas y la tabla de solicitudes con fecha,
+// materia, docente, modalidad y estado. Acciones disponibles:
+//   - Cancelar solicitud (estado pendiente).
+//   - Evaluar sesión (realizada y sin calificación), que enlaza
+//     a tutorias_evaluar.php.
+// =========================================================
 require_once __DIR__ . '/../../includes/verificar_sesion.php';
 require_once __DIR__ . '/../../config/conexion.php';
-require_once __DIR__ . '/../../models/EstudianteModel.php';
 require_once __DIR__ . '/../../models/TutoriaModel.php';
-require_once __DIR__ . '/../../models/CarreraModel.php';
+require_once __DIR__ . '/../../models/EstudianteModel.php';
 
-$estudianteModel = new EstudianteModel($pdo);
 $tutoriaModel = new TutoriaModel($pdo);
+$estudianteModel = new EstudianteModel($pdo);
 
 $idUsuario = $_SESSION['id_usuario'] ?? 0;
+
+// Control de acceso por rol: solo el estudiante entra a este panel
+if (($_SESSION['rol'] ?? '') !== 'estudiante') {
+    if (($_SESSION['rol'] ?? '') === 'administrador') {
+        header('Location: /controllers/dashboard.php');
+    } elseif (($_SESSION['rol'] ?? '') === 'tutor') {
+        header('Location: /views/tutor/panel.php');
+    } else {
+        header('Location: /views/login/login.php');
+    }
+    exit;
+}
+
 $estudiante = $estudianteModel->obtenerPorUsuario($idUsuario);
 
 if (!$estudiante) {
-    $carreraModel = new CarreraModel($pdo);
-    $carreras = $carreraModel->obtenerTodas();
-    $idCarreraDefault = !empty($carreras) ? $carreras[0]['id_carrera'] : 1;
-    $estudianteModel->guardarOActualizar($idUsuario, $idCarreraDefault, 1, 'RU-' . rand(10000, 99999));
-    $estudiante = $estudianteModel->obtenerPorUsuario($idUsuario);
+    // Se crea la ficha académica con carrera y semestre por defecto.
+    // Si la creación falla, se informa de forma amigable (sin error fatal).
+    try {
+        $pdo->prepare("INSERT INTO estudiantes (id_usuario, id_carrera, semestre) VALUES (?, 1, 1)")->execute([$idUsuario]);
+        $estudiante = $estudianteModel->obtenerPorUsuario($idUsuario);
+    } catch (PDOException $e) {
+        $estudiante = false;
+    }
+}
+
+if (!$estudiante) {
+    $tituloPagina = 'Panel del Estudiante - UPDS';
+    include __DIR__ . '/../layouts/header.php';
+    echo '<div class="alert alert-danger d-flex align-items-center gap-2 shadow-sm rounded-3">Se produjo un error al cargar tu ficha de estudiante. Cierra sesión y vuelve a intentarlo, o contacta al administrador.</div>';
+    include __DIR__ . '/../layouts/footer.php';
+    exit;
 }
 
 $idEstudiante = $estudiante['id_estudiante'];
@@ -25,69 +63,92 @@ $misTutorias = $tutoriaModel->obtenerPorEstudiante($idEstudiante);
 $pendientes = count(array_filter($misTutorias, fn($t) => $t['estado'] === 'pendiente'));
 $confirmadas = count(array_filter($misTutorias, fn($t) => $t['estado'] === 'confirmada'));
 $realizadas = count(array_filter($misTutorias, fn($t) => $t['estado'] === 'realizada'));
+$canceladas = count(array_filter($misTutorias, fn($t) => $t['estado'] === 'cancelada'));
 
-$tituloPagina = 'Portal del Estudiante - Tutorías UPDS';
+$tituloPagina = 'Panel del Estudiante - UPDS';
 include __DIR__ . '/../layouts/header.php';
 ?>
 
 <div class="row g-4">
+  <!-- Banda de bienvenida -->
   <div class="col-12">
-    <div class="card card-custom p-4 text-white shadow" style="background: linear-gradient(135deg, #0d5c3a 0%, #198754 100%) !important;">
+    <div class="hero-band p-4 p-md-4 mb-3">
       <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
         <div>
-          <h2 class="fw-bold mb-1">¡Hola, <?= htmlspecialchars($_SESSION['nombre']) ?>! 👋</h2>
-          <p class="mb-0 text-white-50">Carrera: <?= htmlspecialchars($estudiante['nombre_carrera']) ?> &bull; Semestre <?= $estudiante['semestre'] ?> &bull; R.U: <?= htmlspecialchars($estudiante['registro_universitario']) ?></p>
+          <h2 class="fw-bold text-white mb-1">¡Hola, <?= htmlspecialchars($_SESSION['nombre']) ?>! 📚</h2>
+          <p class="text-white-50 mb-0">
+            <?php if (!empty($estudiante['nombre_carrera'])): ?>
+              <i class="bi bi-mortarboard me-1"></i><?= htmlspecialchars($estudiante['nombre_carrera']) ?>
+              &bull; <i class="bi bi-layers me-1"></i>Semestre <?= (int) $estudiante['semestre'] ?>
+            <?php else: ?>
+              Estudiante UPDS &bull; Toca "Mi Perfil" para completar tu ficha académica
+            <?php endif; ?>
+          </p>
         </div>
-        <div>
-          <a href="/controllers/tutorias_solicitar.php" class="btn btn-warning text-dark fw-bold d-flex align-items-center gap-2 shadow-sm px-3 py-2 rounded-3">
-            <i class="bi bi-calendar-plus-fill"></i>
-            <span>+ Solicitar Nueva Tutoría</span>
-          </a>
-        </div>
+        <a href="/controllers/tutorias_solicitar.php" class="btn btn-warning text-dark fw-bold d-flex align-items-center gap-2 shadow-sm">
+          <i class="bi bi-calendar-plus-fill"></i>
+          <span>Solicitar Nueva Tutoría</span>
+        </a>
       </div>
     </div>
   </div>
 
-  <!-- Métricas del estudiante -->
-  <div class="col-md-4">
-    <div class="card card-custom p-4 text-center border-start border-warning border-4">
-      <div class="text-warning fs-1 mb-2"><i class="bi bi-hourglass-split"></i></div>
-      <h3 class="fw-bold mb-0 text-dark"><?= $pendientes ?></h3>
-      <p class="text-muted small mb-0">Solicitudes en Espera de Confirmación</p>
+  <!-- Métricas en vivo -->
+  <div class="col-6 col-md-3">
+    <div class="card card-custom stat-card p-3">
+      <div class="d-flex align-items-center gap-3">
+        <div class="stat-ico bg-warning bg-opacity-25 text-warning"><i class="bi bi-hourglass-split"></i></div>
+        <div><h4 class="fw-bold mb-0 text-warning"><?= $pendientes ?></h4></div>
+      </div>
+      <small class="text-muted">En Espera</small>
     </div>
   </div>
-  <div class="col-md-4">
-    <div class="card card-custom p-4 text-center border-start border-info border-4">
-      <div class="text-info fs-1 mb-2"><i class="bi bi-calendar-event"></i></div>
-      <h3 class="fw-bold mb-0 text-dark"><?= $confirmadas ?></h3>
-      <p class="text-muted small mb-0">Tutorías Confirmadas / Próximas</p>
+  <div class="col-6 col-md-3">
+    <div class="card card-custom stat-card p-3">
+      <div class="d-flex align-items-center gap-3">
+        <div class="stat-ico bg-info bg-opacity-10 text-info"><i class="bi bi-calendar-check"></i></div>
+        <div><h4 class="fw-bold mb-0 text-info"><?= $confirmadas ?></h4></div>
+      </div>
+      <small class="text-muted">Confirmadas</small>
     </div>
   </div>
-  <div class="col-md-4">
-    <div class="card card-custom p-4 text-center border-start border-success border-4">
-      <div class="text-success fs-1 mb-2"><i class="bi bi-award"></i></div>
-      <h3 class="fw-bold mb-0 text-dark"><?= $realizadas ?></h3>
-      <p class="text-muted small mb-0">Tutorías Completadas</p>
+  <div class="col-6 col-md-3">
+    <div class="card card-custom stat-card p-3">
+      <div class="d-flex align-items-center gap-3">
+        <div class="stat-ico bg-success bg-opacity-10 text-success"><i class="bi bi-check2-circle"></i></div>
+        <div><h4 class="fw-bold mb-0 text-success"><?= $realizadas ?></h4></div>
+      </div>
+      <small class="text-muted">Realizadas</small>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card card-custom stat-card p-3">
+      <div class="d-flex align-items-center gap-3">
+        <div class="stat-ico bg-danger bg-opacity-10 text-danger"><i class="bi bi-x-circle"></i></div>
+        <div><h4 class="fw-bold mb-0 text-danger"><?= $canceladas ?></h4></div>
+      </div>
+      <small class="text-muted">Canceladas</small>
     </div>
   </div>
 
-  <!-- Historial de Tutorías -->
+  <!-- Mis tutorías -->
   <div class="col-12">
     <div class="card card-custom shadow-sm overflow-hidden">
-      <div class="card-header bg-white py-3 border-0">
+      <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
         <h5 class="fw-bold mb-0 d-flex align-items-center gap-2">
-          <i class="bi bi-clock-history text-primary"></i>
-          <span>Mis Solicitudes y Tutorías</span>
+          <i class="bi bi-calendar-week text-primary"></i>
+          <span>Mis Solicitudes de Tutoría</span>
         </h5>
+        <span class="badge text-bg-light border px-3 py-2"><?= count($misTutorias) ?> sesión(es)</span>
       </div>
       <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
-          <thead class="table-light text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+          <thead class="table-light text-muted text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">
             <tr>
               <th class="ps-4">Fecha y Horario</th>
               <th>Materia</th>
               <th>Docente Tutor</th>
-              <th>Modalidad / Lugar</th>
+              <th>Modalidad</th>
               <th>Estado</th>
               <th class="text-end pe-4">Acciones</th>
             </tr>
@@ -107,94 +168,49 @@ include __DIR__ . '/../layouts/header.php';
                 </td>
                 <td>
                   <div class="fw-semibold text-primary"><?= htmlspecialchars($t['nombre_materia']) ?></div>
+                  <small class="text-muted"><?= htmlspecialchars($t['nombre_carrera'] ?? 'General') ?></small>
                 </td>
                 <td>
                   <div class="fw-medium text-dark">Prof. <?= htmlspecialchars($t['tut_nombre'] . ' ' . $t['tut_apellido']) ?></div>
                   <small class="text-muted"><?= htmlspecialchars($t['tut_correo']) ?></small>
                 </td>
                 <td>
-                  <span class="badge bg-light text-dark border">
-                    <?= ucfirst($t['modalidad']) ?>
-                  </span>
+                  <span class="badge bg-light text-dark border"><?= ucfirst($t['modalidad']) ?></span>
                   <?php if (!empty($t['lugar_o_enlace'])): ?>
-                    <div class="small text-muted text-truncate" style="max-width: 150px;" title="<?= htmlspecialchars($t['lugar_o_enlace']) ?>">
-                      <?= htmlspecialchars($t['lugar_o_enlace']) ?>
-                    </div>
+                    <div class="small text-muted text-truncate" style="max-width: 150px;" title="<?= htmlspecialchars($t['lugar_o_enlace']) ?>"><?= htmlspecialchars($t['lugar_o_enlace']) ?></div>
                   <?php endif; ?>
                 </td>
                 <td>
-                  <span class="badge rounded-pill px-3 py-1 <?= $badgeEstado ?>">
-                    <?= ucfirst($t['estado']) ?>
-                  </span>
+                  <span class="badge rounded-pill px-3 py-1 <?= $badgeEstado ?>"><?= ucfirst($t['estado']) ?></span>
+                  <?php if (!empty($t['calificacion'])): ?>
+                    <div class="text-warning small mt-1">
+                      <?php for ($i = 1; $i <= 5; $i++): ?>
+                        <i class="bi bi-star<?= $i <= $t['calificacion'] ? '-fill' : '' ?>"></i>
+                      <?php endfor; ?>
+                    </div>
+                  <?php endif; ?>
                 </td>
                 <td class="text-end pe-4">
-                  <?php if ($t['estado'] === 'realizada'): ?>
-                    <?php if (!empty($t['calificacion'])): ?>
-                      <div class="text-warning small" title="Calificación enviada: <?= $t['calificacion'] ?>/5">
-                        <?php for ($i = 1; $i <= 5; $i++): ?>
-                          <i class="bi bi-star<?= $i <= $t['calificacion'] ? '-fill' : '' ?>"></i>
-                        <?php endfor; ?>
-                      </div>
-                    <?php else: ?>
-                      <button type="button" class="btn btn-warning btn-sm d-inline-flex align-items-center gap-1"
-                              data-bs-toggle="modal" data-bs-target="#modalEvaluar_<?= $t['id_tutoria'] ?>">
-                        <i class="bi bi-star"></i> Calificar
+                  <div class="btn-group" role="group">
+                    <?php if ($t['estado'] === 'pendiente'): ?>
+                      <button type="button" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
+                              onclick="confirmarEliminacion('/controllers/tutorias_cambiar_estado.php?id=<?= $t['id_tutoria'] ?>&estado=cancelada&token=<?= tokenCsrfUrl() ?>', '¿Cancelar tu solicitud de tutoría?')">
+                        <i class="bi bi-x-circle"></i> Cancelar Solicitud
                       </button>
-
-                      <!-- Modal de Evaluación -->
-                      <div class="modal fade text-start" id="modalEvaluar_<?= $t['id_tutoria'] ?>" tabindex="-1">
-                        <div class="modal-dialog modal-dialog-centered">
-                          <div class="modal-content rounded-4 border-0 shadow">
-                            <form action="/controllers/tutorias_evaluar.php" method="POST">
-                              <input type="hidden" name="id_tutoria" value="<?= $t['id_tutoria'] ?>">
-                              <div class="modal-header border-0 pb-0">
-                                <h5 class="modal-title fw-bold">Calificar Tutoría de <?= htmlspecialchars($t['nombre_materia']) ?></h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                              </div>
-                              <div class="modal-body">
-                                <p class="text-muted small">Tu retroalimentación ayuda a mejorar el apoyo académico de los tutores.</p>
-                                
-                                <div class="mb-3 text-center">
-                                  <label class="form-label fw-semibold small text-uppercase text-secondary d-block">Calificación (1 a 5 estrellas)</label>
-                                  <select name="calificacion" class="form-select form-select-lg text-center fw-bold text-warning border-warning" required>
-                                    <option value="5">⭐⭐⭐⭐⭐ 5 - Excelente</option>
-                                    <option value="4">⭐⭐⭐⭐ 4 - Muy Buena</option>
-                                    <option value="3">⭐⭐⭐ 3 - Regular</option>
-                                    <option value="2">⭐⭐ 2 - Necesita Mejorar</option>
-                                    <option value="1">⭐ 1 - Deficiente</option>
-                                  </select>
-                                </div>
-
-                                <div class="mb-3">
-                                  <label class="form-label fw-semibold small text-uppercase text-secondary">Comentario u Observaciones</label>
-                                  <textarea name="comentario" class="form-control" rows="3" placeholder="¿Qué te pareció la sesión? ¿Se resolvieron tus dudas?"></textarea>
-                                </div>
-                              </div>
-                              <div class="modal-footer border-0 pt-0">
-                                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
-                                <button type="submit" class="btn btn-success">Guardar Calificación</button>
-                              </div>
-                            </form>
-                          </div>
-                        </div>
-                      </div>
+                    <?php elseif ($t['estado'] === 'realizada' && empty($t['calificacion'])): ?>
+                      <a href="/controllers/tutorias_evaluar.php?id=<?= $t['id_tutoria'] ?>" class="btn btn-sm btn-warning text-dark d-flex align-items-center gap-1">
+                        <i class="bi bi-star-fill"></i> Evaluar Sesión
+                      </a>
                     <?php endif; ?>
-                  <?php elseif ($t['estado'] === 'pendiente'): ?>
-                    <a href="/controllers/tutorias_cambiar_estado.php?id=<?= $t['id_tutoria'] ?>&estado=cancelada" 
-                       class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Deseas cancelar esta solicitud?');">
-                      Cancelar
-                    </a>
-                  <?php else: ?>
-                    <span class="text-muted small">-</span>
-                  <?php endif; ?>
+                  </div>
                 </td>
               </tr>
             <?php endforeach; ?>
             <?php if (empty($misTutorias)): ?>
               <tr>
                 <td colspan="6" class="text-center py-5 text-muted">
-                  <i class="bi bi-calendar-plus fs-1 d-block mb-2 text-secondary"></i>
-                  Aún no has solicitado tutorías. ¡Haz clic en <strong>+ Solicitar Nueva Tutoría</strong> para agendar tu primera sesión!
+                  <i class="bi bi-calendar-x fs-1 d-block mb-2 text-secondary"></i>
+                  No has solicitado tutorías todavía. ¡Aprovecha el apoyo académico UPDS!
                 </td>
               </tr>
             <?php endif; ?>

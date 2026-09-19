@@ -1,30 +1,86 @@
 <?php
+// =========================================================
+// VISTA: LISTADO DE TUTORES (views/tutores/listar.php)
+// ---------------------------------------------------------
+// Requiere sesión. Muestra métricas (tutores, materias
+// asignadas y bloques horarios) y la tabla de docentes tutores
+// con especialidad, contacto, materias y horarios. Cada fila
+// enlaza a tutores_disponibilidad.php?id=... para gestionar
+// sus horarios. Incluye buscador en vivo.
+// Variables del controlador (controllers/tutores_listar.php):
+//   $tutores (con total_materias y total_horarios)
+// =========================================================
 require_once __DIR__ . '/../../includes/verificar_sesion.php';
 $tituloPagina = 'Gestión de Docentes Tutores - UPDS';
 include __DIR__ . '/../layouts/header.php';
+
+$totalMaterias = array_sum(array_column($tutores, 'total_materias'));
+$totalHorarios = array_sum(array_column($tutores, 'total_horarios'));
 ?>
 
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
-  <div>
-    <h2 class="fw-bold mb-1 d-flex align-items-center gap-2">
-      <i class="bi bi-person-video3 text-primary"></i>
-      <span>Docentes Tutores Académicos</span>
-      <span class="badge bg-primary bg-opacity-10 text-primary fs-6"><?= count($tutores) ?></span>
-    </h2>
-    <p class="text-muted mb-0">Cuerpo docente capacitado para brindar asesorías y reforzamiento académico.</p>
-  </div>
-  <div>
-    <a href="usuarios_crear.php" class="btn btn-primary d-flex align-items-center gap-2 shadow-sm px-3 py-2 rounded-3">
+<div class="hero-band p-4 mb-4">
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+    <div>
+      <h2 class="fw-bold text-white mb-1 d-flex align-items-center gap-2">
+        <i class="bi bi-person-video3"></i>
+        <span>Docentes Tutores Académicos</span>
+      </h2>
+      <p class="text-white-50 mb-0">Cuerpo docente capacitado para brindar asesorías y reforzamiento académico.</p>
+    </div>
+    <a href="usuarios_crear.php" class="btn btn-warning text-dark fw-bold d-flex align-items-center gap-2 shadow-sm px-3 py-2 rounded-3">
       <i class="bi bi-person-plus-fill"></i>
-      <span class="fw-semibold">+ Nuevo Tutor</span>
+      <span>Nuevo Tutor</span>
     </a>
   </div>
 </div>
 
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="card card-custom stat-card p-3">
+      <div class="d-flex align-items-center gap-3">
+        <div class="stat-ico bg-indigo text-indigo"><i class="bi bi-person-video3"></i></div>
+        <div>
+          <h4 class="fw-bold mb-0 text-dark"><?= count($tutores) ?></h4>
+          <small class="text-muted">Docentes tutores</small>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card card-custom stat-card p-3">
+      <div class="d-flex align-items-center gap-3">
+        <div class="stat-ico bg-primary bg-opacity-10 text-primary"><i class="bi bi-book-fill"></i></div>
+        <div>
+          <h4 class="fw-bold mb-0 text-dark"><?= $totalMaterias ?></h4>
+          <small class="text-muted">Materias asignadas</small>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card card-custom stat-card p-3">
+      <div class="d-flex align-items-center gap-3">
+        <div class="stat-ico text-ok"><i class="bi bi-clock-history"></i></div>
+        <div>
+          <h4 class="fw-bold mb-0 text-dark"><?= $totalHorarios ?></h4>
+          <small class="text-muted">Bloques horarios</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="card card-custom shadow-sm overflow-hidden">
+  <div class="card-header bg-white py-3 border-0">
+    <div class="input-group" style="max-width: 340px;">
+      <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+      <input type="text" id="buscadorTutores" class="form-control bg-light border-start-0" placeholder="Buscar tutor, especialidad o correo...">
+    </div>
+  </div>
+
   <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
-      <thead class="table-light text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+    <table class="table table-hover align-middle mb-0" id="tablaTutores">
+      <thead class="table-light text-muted text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">
         <tr>
           <th class="ps-4">Tutor Docente</th>
           <th>Especialidad</th>
@@ -39,9 +95,7 @@ include __DIR__ . '/../layouts/header.php';
           <tr>
             <td class="ps-4">
               <div class="d-flex align-items-center gap-3">
-                <div class="rounded-circle d-flex align-items-center justify-content-center bg-indigo bg-opacity-10 text-primary fw-bold" style="width: 42px; height: 42px; background: #e0e7ff;">
-                  <?= strtoupper(substr($t['nombre'], 0, 1) . substr($t['apellido'], 0, 1)) ?>
-                </div>
+                <div class="avatar-md" style="background:linear-gradient(135deg,#4338ca,#6d28d9);"><?= iniciales($t['nombre'], $t['apellido']) ?></div>
                 <div>
                   <div class="fw-bold text-dark">Prof. <?= htmlspecialchars($t['nombre'] . ' ' . $t['apellido']) ?></div>
                   <small class="text-muted"><i class="bi bi-person me-1"></i><?= htmlspecialchars($t['usuario']) ?></small>
@@ -49,9 +103,7 @@ include __DIR__ . '/../layouts/header.php';
               </div>
             </td>
             <td>
-              <span class="fw-medium text-secondary">
-                <?= htmlspecialchars($t['especialidad'] ?? 'Docencia Universitaria') ?>
-              </span>
+              <span class="fw-medium text-secondary"><?= htmlspecialchars($t['especialidad'] ?? 'Docencia Universitaria') ?></span>
             </td>
             <td>
               <div><i class="bi bi-envelope me-1 text-muted"></i><?= htmlspecialchars($t['correo']) ?></div>
@@ -72,7 +124,7 @@ include __DIR__ . '/../layouts/header.php';
             <td class="text-end pe-4">
               <a href="tutores_disponibilidad.php?id=<?= $t['id_tutor'] ?>" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1">
                 <i class="bi bi-sliders"></i>
-                <span>Gestionar Horarios y Materias</span>
+                <span>Gestionar Horarios</span>
               </a>
             </td>
           </tr>
@@ -89,5 +141,15 @@ include __DIR__ . '/../layouts/header.php';
     </table>
   </div>
 </div>
+
+<script>
+  document.getElementById('buscadorTutores')?.addEventListener('keyup', function() {
+    const valor = this.value.toLowerCase();
+    const filas = document.querySelectorAll('#tablaTutores tbody tr');
+    filas.forEach(fila => {
+      fila.style.display = fila.textContent.toLowerCase().includes(valor) ? '' : 'none';
+    });
+  });
+</script>
 
 <?php include __DIR__ . '/../layouts/footer.php'; ?>

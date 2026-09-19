@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS disponibilidad_tutor (
   dia_semana ENUM('Lunes','Martes','Miercoles','Jueves','Viernes','Sabado') NOT NULL,
   hora_inicio TIME NOT NULL,
   hora_fin TIME NOT NULL,
+  UNIQUE KEY uq_disp_tutor_dia_hora (id_tutor, dia_semana, hora_inicio),
   CONSTRAINT fk_disp_tutor FOREIGN KEY (id_tutor) REFERENCES tutores(id_tutor) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -116,7 +117,10 @@ CREATE TABLE IF NOT EXISTS tutorias (
   CONSTRAINT fk_tutorias_tutor FOREIGN KEY (id_tutor) REFERENCES tutores(id_tutor) ON UPDATE CASCADE,
   CONSTRAINT fk_tutorias_materia FOREIGN KEY (id_materia) REFERENCES materias(id_materia) ON UPDATE CASCADE,
   INDEX idx_tutoria_fecha (fecha),
-  INDEX idx_tutoria_estado (estado)
+  INDEX idx_tutoria_estado (estado),
+  INDEX idx_tutoria_tutor_fecha (id_tutor, fecha),
+  UNIQUE KEY uq_tutor_fecha_hora (id_tutor, fecha, hora_inicio),
+  UNIQUE KEY uq_estud_fecha_hora (id_estudiante, fecha, hora_inicio)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------------------------------------------------------
