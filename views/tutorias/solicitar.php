@@ -1,0 +1,316 @@
+<?php
+// =========================================================
+// VISTA: SOLICITAR TUTORÍA (views/tutorias/solicitar.php)
+// ---------------------------------------------------------
+// Formulario que el estudiante completa para agendar una
+// sesión: materia, docente tutor, fecha, horas, modalidad y
+// lugar/enlace, más observaciones.
+// JavaScript incluido:
+//   - filtrarTutores(): deshabilita los tutores que no imparten
+//     la materia elegida o que no están activos (usa data-materias
+//     y data-estado de cada <option>).
+//   - Al elegir modalidad virtual, hace obligatorio y tipo URL
+//     el campo lugar_o_enlace.
+//   - Verifica que la hora de fin sea posterior a la de inicio.
+// Variables del controlador (controllers/tutorias_solicitar.php):
+//   $materias, $tutores (con materias_ids y estado), $errores
+// =========================================================
+require_once __DIR__ . '/../../includes/verificar_sesion.php';
+$tituloPagina = 'Solicitar Tutoría Académica - UPDS';
+include __DIR__ . '/../layouts/header.php';
+$rolAux = $_SESSION['rol'] ?? 'estudiante';
+$volverUrl = ($rolAux === 'estudiante') ? '../views/estudiante/panel.php' : 'tutorias_listar.php';
+?>
+
+<div class="row justify-content-center">
+  <div class="col-lg-9 col-xl-8">
+    <div class="hero-band p-4 mb-4">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+        <div>
+          <h3 class="fw-bold text-white mb-1 d-flex align-items-center gap-2">
+            <i class="bi bi-calendar-plus-fill"></i>
+            <span>Agendar Sesión de Tutoría</span>
+          </h3>
+          <p class="text-white-50 mb-0">Completa los datos para enviar tu solicitud de apoyo académico.</p>
+        </div>
+        <a href="<?= $volverUrl ?>" class="btn btn-light d-flex align-items-center gap-1">
+          <i class="bi bi-arrow-left"></i> Volver
+        </a>
+      </div>
+    </div>
+
+    <?php if (!empty($errores)): ?>
+      <div class="alert alert-danger py-2 px-3 rounded-3 shadow-sm mb-4">
+        <div class="fw-bold mb-1"><i class="bi bi-exclamation-circle-fill me-1"></i> Corrige los siguientes datos:</div>
+        <ul class="mb-0 ps-3 small">
+          <?php foreach ($errores as $e): ?>
+            <li><?= htmlspecialchars($e) ?></li>
+          <?php endforeach; ?>
+        </ul>
+      </div>
+    <?php endif; ?>
+
+    <div class="card card-custom p-4 p-md-5">
+      <form method="POST" autocomplete="off" class="needs-validation" novalidate>
+    <?= campoCsrf() ?>
+        <div class="row g-3">
+          <!-- Materia -->
+          <div class="col-md-12">
+            <label class="form-label fw-semibold text-secondary small text-uppercase">Materia Académica *</label>
+            <select name="id_materia" id="selMateria" class="form-select rounded-3 py-2" required>
+              <option value="" disabled <?= empty($_POST['id_materia']) ? 'selected' : '' ?>>Selecciona la materia que deseas reforzar...</option>
+              <?php foreach ($materias as $m): ?>
+                <option value="<?= $m['id_materia'] ?>" <?= (isset($_POST['id_materia']) && $_POST['id_materia'] == $m['id_materia']) ? 'selected' : '' ?>>
+                  <?= htmlspecialchars($m['nombre_materia']) ?> (<?= htmlspecialchars($m['nombre_carrera'] ?? 'General') ?>)
+                </option>
+              <?php endforeach; ?>
+            </select>
+            <?php if (empty($materias)): ?>
+              <div class="form-text text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Tu carrera (<?= htmlspecialchars($carreraEstudiante ?: 'sin asignar') ?>) aún no tiene materias registradas. Pide al administrador que las registre para poder agendar tutorías.</div>
+            <?php else: ?>
+              <div class="form-text"><i class="bi bi-info-circle me-1"></i>Materias de tu carrera (<?= htmlspecialchars($carreraEstudiante ?: 'sin asignar') ?>).</div>
+            <?php endif; ?>
+            <div class="invalid-feedback">Debes seleccionar una materia.</div>
+          </div>
+
+          <!-- Tutor -->
+          <div class="col-md-12">
+            <label class="form-label fw-semibold text-secondary small text-uppercase">Docente Tutor *</label>
+            <select name="id_tutor" id="selTutor" class="form-select rounded-3 py-2" required>
+              <option value="" disabled selected>Selecciona al tutor académico...</option>
+              <?php foreach ($tutores as $t): ?>
+                <option value="<?= $t['id_tutor'] ?>"
+                        data-materias="<?= implode(' ', array_map('intval', $t['materias_ids'])) ?>"
+                        data-estado="<?= htmlspecialchars($t['estado']) ?>"
+                        data-disponibilidad="<?= htmlspecialchars(implode(',', array_map(fn($d) => $d['dia_semana'] . '|' . substr($d['hora_inicio'], 0, 5) . '|' . substr($d['hora_fin'], 0, 5), $t['disponibilidad'] ?? [])), ENT_QUOTES) ?>"
+                        <?= (isset($_POST['id_tutor']) && $_POST['id_tutor'] == $t['id_tutor']) ? 'selected' : '' ?>>
+                  Prof. <?= htmlspecialchars($t['nombre'] . ' ' . $t['apellido']) ?> <?= !empty($t['especialidad']) ? '— ' . htmlspecialchars($t['especialidad']) : '' ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+            <div class="invalid-feedback">Debes seleccionar un docente tutor para la materia elegida.</div>
+            <div class="form-text" id="textoTutores"><i class="bi bi-info-circle me-1"></i>El docente debe impartir la materia seleccionada.</div>
+          </div>
+
+          <!-- Disponibilidad del tutor -->
+          <div class="col-md-12">
+            <div class="alert alert-info d-none mb-2" id="bloqueHorarios">
+              <div class="fw-bold mb-2"><i class="bi bi-clock-history me-1"></i>Horarios en que atiende este docente tutor:</div>
+              <div id="listaHorarios" class="d-flex flex-wrap gap-2"></div>
+              <div class="form-text mt-2" id="infoDia"></div>
+            </div>
+          </div>
+
+          <!-- Fecha -->
+          <div class="col-md-4">
+            <label class="form-label fw-semibold text-secondary small text-uppercase">Fecha de la Sesión *</label>
+            <input type="date" name="fecha" class="form-control rounded-3 py-2" min="<?= date('Y-m-d') ?>" value="<?= htmlspecialchars($_POST['fecha'] ?? date('Y-m-d')) ?>" required>
+            <div class="invalid-feedback">Elige una fecha (no puede ser en el pasado).</div>
+          </div>
+
+          <!-- Hora Inicio -->
+          <div class="col-md-4">
+            <label class="form-label fw-semibold text-secondary small text-uppercase">Hora Inicio *</label>
+            <input type="time" name="hora_inicio" class="form-control rounded-3 py-2" value="<?= htmlspecialchars($_POST['hora_inicio'] ?? '15:00') ?>" required>
+            <div class="invalid-feedback">Indica la hora de inicio.</div>
+          </div>
+
+          <!-- Hora Fin -->
+          <div class="col-md-4">
+            <label class="form-label fw-semibold text-secondary small text-uppercase">Hora Fin *</label>
+            <input type="time" name="hora_fin" class="form-control rounded-3 py-2" value="<?= htmlspecialchars($_POST['hora_fin'] ?? '16:00') ?>" required>
+            <div class="form-text">Se ajusta sola (1 hora por defecto). Cambia solo si necesitas más o menos tiempo.</div>
+            <div class="invalid-feedback">Indica la hora de fin (debe ser posterior).</div>
+          </div>
+
+          <!-- Modalidad -->
+          <div class="col-md-6">
+            <label class="form-label fw-semibold text-secondary small text-uppercase">Modalidad *</label>
+            <select name="modalidad" id="selModalidad" class="form-select rounded-3 py-2" required>
+              <option value="presencial" <?= (isset($_POST['modalidad']) && $_POST['modalidad'] === 'presencial') ? 'selected' : '' ?>>Presencial (En campus UPDS)</option>
+              <option value="virtual" <?= (isset($_POST['modalidad']) && $_POST['modalidad'] === 'virtual') ? 'selected' : '' ?>>Virtual (Meet / Teams / Zoom)</option>
+            </select>
+          </div>
+
+          <!-- Lugar o Enlace -->
+          <div class="col-md-6">
+            <label class="form-label fw-semibold text-secondary small text-uppercase">Lugar o Enlace</label>
+            <input type="text" name="lugar_o_enlace" id="lugarEnlace" class="form-control rounded-3 py-2"
+                   placeholder="Ej: Aula 204 o https://meet.google.com/..."
+                   value="<?= htmlspecialchars($_POST['lugar_o_enlace'] ?? '') ?>">
+            <div class="form-text" id="textoLugar">Indica el aula física o el enlace de la videollamada.</div>
+          </div>
+
+          <!-- Observaciones / Temas -->
+          <div class="col-12">
+            <label class="form-label fw-semibold text-secondary small text-uppercase">Temas o Preguntas a Tratar</label>
+            <textarea name="observaciones" class="form-control rounded-3" rows="3" maxlength="1000"
+                      placeholder="Describe brevemente las dudas o temas puntuales que necesitas repasar con el tutor..."><?= htmlspecialchars($_POST['observaciones'] ?? '') ?></textarea>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+          <a href="<?= $volverUrl ?>" class="btn btn-light px-4 py-2 rounded-3">Cancelar</a>
+          <button type="submit" class="btn btn-primary px-4 py-2 rounded-3 shadow-sm d-flex align-items-center gap-2">
+            <i class="bi bi-send-fill"></i>
+            <span>Confirmar y Enviar Solicitud</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Filtro dinámico: solo mostrar tutores que impartan la materia seleccionada
+  const selMateria = document.getElementById('selMateria');
+  const selTutor   = document.getElementById('selTutor');
+  const txtTutores = document.getElementById('textoTutores');
+
+  function filtrarTutores() {
+    const materiaId = selMateria.value;
+    if (!materiaId) { return; }
+
+    let visibles = 0;
+    Array.from(selTutor.options).forEach(opt => {
+      if (opt.value === '') return;
+      const materias = (opt.dataset.materias || '').split(' ').filter(Boolean);
+      const activo = opt.dataset.estado === 'activo';
+      const coincide = materias.includes(materiaId);
+      opt.disabled = !(activo && coincide);
+      opt.hidden = !(activo && coincide);
+      if (activo && coincide) visibles++;
+    });
+
+    if (selTutor.selectedOptions[0] && selTutor.selectedOptions[0].disabled) {
+      selTutor.value = '';
+    }
+
+    txtTutores.innerHTML = visibles === 0
+      ? '<i class="bi bi-exclamation-triangle me-1"></i>No hay tutores activos para esta materia aún.'
+      : '<i class="bi bi-info-circle me-1"></i>' + visibles + ' tutor(es) activo(s) disponible(s) para esta materia.';
+  }
+
+  selMateria.addEventListener('change', filtrarTutores);
+  filtrarTutores();
+
+  // ---- Mostrar disponibilidad del tutor seleccionado ----
+  const selFecha        = document.querySelector('[name="fecha"]');
+  const ini             = document.querySelector('[name="hora_inicio"]');
+  const fin             = document.querySelector('[name="hora_fin"]');
+  const bloqueHorarios  = document.getElementById('bloqueHorarios');
+  const listaHorarios   = document.getElementById('listaHorarios');
+  const infoDia         = document.getElementById('infoDia');
+  const diasSemana      = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
+
+  // Mapa: id_tutor -> [{dia, inicio, fin}]
+  const bloquesPorTutor = {};
+  Array.from(selTutor.options).forEach(opt => {
+    if (opt.value === '') return;
+    bloquesPorTutor[opt.value] = (opt.dataset.disponibilidad || '')
+      .split(',').filter(Boolean)
+      .map(b => { const [dia, inicio, fin] = b.split('|'); return { dia, inicio, fin }; });
+  });
+
+  function diaSemanaDe(fechaStr) {
+    if (!fechaStr) return null;
+    const p = fechaStr.split('-');
+    return new Date(+p[0], +p[1] - 1, +p[2]).getDay();
+  }
+
+  function renderHorarios() {
+    const tutor = selTutor.value;
+    if (tutor === '') {
+      bloqueHorarios.classList.add('d-none');
+      return;
+    }
+    const bloques = bloquesPorTutor[tutor] || [];
+    bloqueHorarios.classList.remove('d-none');
+
+    if (bloques.length === 0) {
+      listaHorarios.innerHTML = '<span class="badge rounded-pill px-3 py-2 border bg-light text-warning">Sin horarios declarados aún</span>';
+    } else {
+      listaHorarios.innerHTML = bloques.map(b =>
+        '<span class="badge rounded-pill px-3 py-2 border bg-light text-dark"><i class="bi bi-calendar-event me-1 text-primary"></i>' + b.dia + ' ' + b.inicio + ' – ' + b.fin + '</span>'
+      ).join('');
+    }
+    actualizarInfoDia();
+  }
+
+  function actualizarInfoDia() {
+    const tutor = selTutor.value;
+    const fecha = selFecha.value;
+    if (!tutor || !fecha) { infoDia.textContent = ''; return; }
+
+    const dia = diasSemana[diaSemanaDe(fecha)];
+    const coincide = (bloquesPorTutor[tutor] || []).filter(b => b.dia === dia);
+
+    if (coincide.length === 0) {
+      infoDia.innerHTML = '<i class="bi bi-exclamation-circle me-1 text-danger"></i>El día elegido (<b>' + dia + '</b>): este tutor <b>no atiende ese día</b>. Elige un día con horario disponible.';
+    } else {
+      infoDia.innerHTML = '<i class="bi bi-check-circle me-1 text-success"></i>El día elegido (<b>' + dia + '</b>) coincide con sus horarios: atiende de ' + coincide.map(b => '<b>' + b.inicio + ' a ' + b.fin + '</b>').join(' y ') + '.';
+    }
+  }
+
+  // La hora de fin se completa automáticamente (1 hora por defecto)
+  function sumarMinutos(hora, minutos) {
+    const [hh, mm] = hora.split(':').map(Number);
+    const t = (hh * 60 + mm + minutos) % (24 * 60);
+    return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0');
+  }
+
+  selTutor.addEventListener('change', renderHorarios);
+  selFecha.addEventListener('change', actualizarInfoDia);
+  ini.addEventListener('change', () => {
+    if (!ini.value) return;
+    if (!fin.value || fin.value <= ini.value) {
+      let tope = null;
+      const bloques = selTutor.value ? (bloquesPorTutor[selTutor.value] || []) : [];
+      const dia = selFecha.value ? diasSemana[diaSemanaDe(selFecha.value)] : null;
+      const coinciden = bloques.filter(b => b.dia === dia);
+      if (coinciden.length === 1) tope = coinciden[0].fin;
+      let aux = sumarMinutos(ini.value, 60);
+      if (tope && aux > tope) aux = tope;
+      fin.value = aux;
+    }
+  });
+
+  // Al cargar (POST con errores) se refrescan los horarios del tutor elegido
+  if (selTutor.value) renderHorarios();
+
+  // Requerir URL válida en modalidad virtual
+  const selModalidad = document.getElementById('selModalidad');
+  const lugarEnlace  = document.getElementById('lugarEnlace');
+  const textoLugar   = document.getElementById('textoLugar');
+
+  selModalidad.addEventListener('change', () => {
+    if (selModalidad.value === 'virtual') {
+      lugarEnlace.required = true;
+      lugarEnlace.type = 'url';
+      textoLugar.innerHTML = '<i class="bi bi-info-circle me-1"></i>Obligatorio para tutorías virtuales: pega el enlace de la videoconferencia.';
+    } else {
+      lugarEnlace.required = false;
+      lugarEnlace.type = 'text';
+      textoLugar.innerHTML = 'Indica el aula física o el enlace de la videollamada.';
+    }
+  });
+
+  // Validación visual de Bootstrap
+  (() => {
+    const form = document.querySelector('.needs-validation');
+    if (!form) return;
+    form.addEventListener('submit', (e) => {
+      const inicio = form.querySelector('[name="hora_inicio"]');
+      const fin    = form.querySelector('[name="hora_fin"]');
+      if (inicio.value && fin.value && inicio.value >= fin.value) {
+        fin.setCustomValidity('La hora de fin debe ser posterior a la de inicio');
+      } else {
+        fin.setCustomValidity('');
+      }
+      if (!form.checkValidity()) { e.preventDefault(); e.stopPropagation(); }
+      form.classList.add('was-validated');
+    }, false);
+  })();
+</script>
+
+<?php include __DIR__ . '/../layouts/footer.php'; ?>

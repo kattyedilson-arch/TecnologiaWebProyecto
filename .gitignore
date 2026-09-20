@@ -1,0 +1,13 @@
+# Archivo basura generado accidentalmente en la raíz
+/0
+
+# Registros y temporales
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Carpetas de editores/IDE
+nbproject/
+.idea/
+.vscode/
