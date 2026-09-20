@@ -7,6 +7,7 @@
 // validación del servidor en $errores.
 // =========================================================
 require_once __DIR__ . '/../../includes/verificar_sesion.php';
+requerirRol('administrador');
 $tituloPagina = 'Editar Carrera - Sistema de Tutorías';
 include __DIR__ . '/../layouts/header.php';
 ?>
@@ -47,8 +48,14 @@ include __DIR__ . '/../layouts/header.php';
           <label class="form-label fw-semibold text-secondary small text-uppercase">Nombre de la Carrera *</label>
           <input type="text" name="nombre_carrera" class="form-control rounded-3 py-2"
                  value="<?= htmlspecialchars($carrera_actual['nombre_carrera']) ?>"
-                 minlength="4" maxlength="150" required>
-          <div class="invalid-feedback">El nombre debe tener al menos 4 caracteres.</div>
+                 minlength="5" maxlength="150" list="lista-carreras-globales" required>
+          <datalist id="lista-carreras-globales">
+            <?php foreach (obtenerCarrerasGlobales() as $carrera): ?>
+              <option value="<?= htmlspecialchars($carrera) ?>"></option>
+            <?php endforeach; ?>
+          </datalist>
+          <div class="invalid-feedback">El nombre debe tener al menos 5 caracteres.</div>
+          <div class="form-text">Escribe y aparecerán sugerencias de carreras reales reconocidas.</div>
         </div>
 
         <div class="d-flex justify-content-end gap-2 pt-3 border-top">

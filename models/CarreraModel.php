@@ -41,6 +41,28 @@ class CarreraModel
     }
 
     /**
+     * Verifica si ya existe una carrera con el mismo nombre,
+     * ignorando mayúsculas/minúsculas, tildes y espacios extra.
+     * @param string $nombre Nombre de la carrera a verificar
+     * @param int|null $excluirId Si se indica, esa carrera no cuenta (para ediciones)
+     * @return bool True si ya existe otra carrera con nombre equivalente
+     */
+    public function existePorNombre($nombre, $excluirId = null)
+    {
+        $nombreNorm = $this->normalizarNombre($nombre);
+        $filas = $this->pdo->query("SELECT id_carrera, nombre_carrera FROM carreras")->fetchAll();
+        foreach ($filas as $fila) {
+            if ($excluirId !== null && (int)$fila['id_carrera'] === (int)$excluirId) {
+                continue;
+            }
+            if ($this->normalizarNombre($fila['nombre_carrera']) === $nombreNorm) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Registra una nueva carrera.
      * @param string $nombre Nombre de la carrera
      * @return bool True si la inserción fue exitosa
@@ -75,5 +97,20 @@ class CarreraModel
     {
         $stmt = $this->pdo->prepare("DELETE FROM carreras WHERE id_carrera = :id");
         return $stmt->execute([':id' => $id]);
+    }
+
+    /**
+     * Normaliza un nombre para comparar equivalencias (minúsculas, sin tildes, sin espacios extra).
+     * @param string $texto Nombre original
+     * @return string Nombre normalizado
+     */
+    private function normalizarNombre($texto)
+    {
+        $texto = mb_strtolower(trim((string)$texto), 'UTF-8');
+        $texto = strtr($texto, [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
+            'ü' => 'u', 'ñ' => 'n'
+        ]);
+        return trim((string)preg_replace('/\s+/u', ' ', $texto));
     }
 }

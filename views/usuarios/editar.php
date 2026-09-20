@@ -11,6 +11,7 @@
 //   $usuario_actual (datos precargados), $roles, $errores
 // =========================================================
 require_once __DIR__ . '/../../includes/verificar_sesion.php';
+requerirRol('administrador');
 $tituloPagina = 'Editar Usuario - Sistema de Tutorías';
 include __DIR__ . '/../layouts/header.php';
 $esMiCuenta = (int)$usuario_actual['id_usuario'] === (int)($_SESSION['id_usuario'] ?? 0);

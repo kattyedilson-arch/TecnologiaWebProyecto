@@ -12,6 +12,7 @@
 //   $roles (select de roles) y $errores (lista de errores)
 // =========================================================
 require_once __DIR__ . '/../../includes/verificar_sesion.php';
+requerirRol('administrador');
 $tituloPagina = 'Nuevo Usuario - Sistema de Tutorías';
 include __DIR__ . '/../layouts/header.php';
 ?>

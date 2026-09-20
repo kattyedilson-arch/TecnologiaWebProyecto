@@ -10,6 +10,8 @@ require_once __DIR__ . '/../includes/verificar_sesion.php';
 require_once __DIR__ . '/../config/conexion.php';
 require_once __DIR__ . '/../models/EstudianteModel.php';
 
+requerirRol('administrador');
+
 $estudianteModel = new EstudianteModel($pdo);
 $estudiantes = $estudianteModel->obtenerTodos();
 

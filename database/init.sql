@@ -36,7 +36,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
 -- ---------------------------------------------------------
 CREATE TABLE IF NOT EXISTS carreras (
   id_carrera INT AUTO_INCREMENT PRIMARY KEY,
-  nombre_carrera VARCHAR(150) NOT NULL
+  nombre_carrera VARCHAR(150) NOT NULL,
+  UNIQUE KEY uq_carreras_nombre (nombre_carrera)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------------------------------------------------------
@@ -70,6 +71,7 @@ CREATE TABLE IF NOT EXISTS materias (
   id_materia INT AUTO_INCREMENT PRIMARY KEY,
   nombre_materia VARCHAR(150) NOT NULL,
   id_carrera INT,
+  UNIQUE KEY uq_materias_nombre (nombre_materia),
   CONSTRAINT fk_materias_carreras FOREIGN KEY (id_carrera) REFERENCES carreras(id_carrera) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

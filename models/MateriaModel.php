@@ -61,6 +61,31 @@ class MateriaModel
     }
 
     /**
+     * Verifica si ya existe una materia con el mismo nombre en la MISMA carrera
+     * (evita materias repetidas dentro de una carrera), ignorando
+     * mayúsculas/minúsculas, tildes y espacios extra.
+     * @param string $nombre Nombre de la materia a verificar
+     * @param int $idCarrera Carrera a la que pertenece la materia
+     * @param int|null $excluirId Si se indica, esa materia no cuenta (para ediciones)
+     * @return bool True si ya existe otra materia con nombre equivalente en esa carrera
+     */
+    public function existeEnCarrera($nombre, $idCarrera, $excluirId = null)
+    {
+        $nombreNorm = $this->normalizarNombre($nombre);
+        $stmt = $this->pdo->prepare("SELECT id_materia, nombre_materia FROM materias WHERE id_carrera = :idc");
+        $stmt->execute([':idc' => $idCarrera]);
+        foreach ($stmt->fetchAll() as $fila) {
+            if ($excluirId !== null && (int)$fila['id_materia'] === (int)$excluirId) {
+                continue;
+            }
+            if ($this->normalizarNombre($fila['nombre_materia']) === $nombreNorm) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Crea una nueva materia.
      * @param array $datos Arreglo con nombre_materia e id_carrera (opcional)
      * @return bool True si la inserción fue exitosa
@@ -99,5 +124,20 @@ class MateriaModel
     {
         $stmt = $this->pdo->prepare("DELETE FROM materias WHERE id_materia = :id");
         return $stmt->execute([':id' => $id]);
+    }
+
+    /**
+     * Normaliza un nombre para comparar equivalencias (minúsculas, sin tildes, sin espacios extra).
+     * @param string $texto Nombre original
+     * @return string Nombre normalizado
+     */
+    private function normalizarNombre($texto)
+    {
+        $texto = mb_strtolower(trim((string)$texto), 'UTF-8');
+        $texto = strtr($texto, [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
+            'ü' => 'u', 'ñ' => 'n'
+        ]);
+        return trim((string)preg_replace('/\s+/u', ' ', $texto));
     }
 }

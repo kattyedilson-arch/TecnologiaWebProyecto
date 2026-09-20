@@ -16,6 +16,7 @@
 //   $tutorias, $metricas, $filtroEstado
 // =========================================================
 require_once __DIR__ . '/../../includes/verificar_sesion.php';
+requerirRol('administrador');
 $tituloPagina = 'Gestión de Tutorías - UPDS';
 include __DIR__ . '/../layouts/header.php';
 ?>

@@ -13,6 +13,7 @@
 //   $totalAdmins, $totalTutores, $totalEstud
 // =========================================================
 require_once __DIR__ . '/../../includes/verificar_sesion.php';
+requerirRol('administrador');
 $tituloPagina = 'Gestión de Usuarios - Sistema de Tutorías';
 include __DIR__ . '/../layouts/header.php';
 ?>

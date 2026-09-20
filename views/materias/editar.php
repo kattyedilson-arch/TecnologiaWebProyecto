@@ -7,6 +7,7 @@
 // opciones del select. Errores del servidor en $errores.
 // =========================================================
 require_once __DIR__ . '/../../includes/verificar_sesion.php';
+requerirRol('administrador');
 $tituloPagina = 'Editar Materia - Sistema de Tutorías';
 include __DIR__ . '/../layouts/header.php';
 ?>
@@ -52,15 +53,16 @@ include __DIR__ . '/../layouts/header.php';
         </div>
 
         <div class="mb-4">
-          <label class="form-label fw-semibold text-secondary small text-uppercase">Carrera Perteneciente</label>
-          <select name="id_carrera" class="form-select rounded-3 py-2">
-            <option value="">-- Sin carrera asignada --</option>
+          <label class="form-label fw-semibold text-secondary small text-uppercase">Carrera Perteneciente *</label>
+          <select name="id_carrera" class="form-select rounded-3 py-2" required>
+            <option value="">-- Selecciona la carrera (Obligatoria) --</option>
             <?php foreach ($carreras as $c): ?>
               <option value="<?= $c['id_carrera'] ?>" <?= ($c['id_carrera'] == $materia_actual['id_carrera']) ? 'selected' : '' ?>>
                 <?= htmlspecialchars($c['nombre_carrera']) ?>
               </option>
             <?php endforeach; ?>
           </select>
+          <div class="invalid-feedback">Debes seleccionar la carrera a la que pertenece la materia.</div>
         </div>
 
         <div class="d-flex justify-content-end gap-2 pt-3 border-top">

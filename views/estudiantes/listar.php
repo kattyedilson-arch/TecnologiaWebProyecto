@@ -11,6 +11,7 @@
 //   semestre, correo, telefono y total_tutorias)
 // =========================================================
 require_once __DIR__ . '/../../includes/verificar_sesion.php';
+requerirRol('administrador');
 $tituloPagina = 'Gestión de Estudiantes - UPDS';
 include __DIR__ . '/../layouts/header.php';
 

@@ -11,6 +11,7 @@
 //   $tutores (con total_materias y total_horarios)
 // =========================================================
 require_once __DIR__ . '/../../includes/verificar_sesion.php';
+requerirRol('administrador');
 $tituloPagina = 'Gestión de Docentes Tutores - UPDS';
 include __DIR__ . '/../layouts/header.php';
 

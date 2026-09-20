@@ -15,6 +15,8 @@ require_once __DIR__ . '/../models/RolModel.php';
 require_once __DIR__ . '/../models/CarreraModel.php';
 require_once __DIR__ . '/../models/EstudianteModel.php';
 
+requerirRol('administrador');
+
 $usuarioModel = new UsuarioModel($pdo);
 $rolModel = new RolModel($pdo);
 $carreraModel = new CarreraModel($pdo);

@@ -10,6 +10,7 @@
 //   $materias (con total_tutores y nombre_carrera)
 // =========================================================
 require_once __DIR__ . '/../../includes/verificar_sesion.php';
+requerirRol('administrador');
 $tituloPagina = 'Gestión de Materias - Sistema de Tutorías';
 include __DIR__ . '/../layouts/header.php';
 

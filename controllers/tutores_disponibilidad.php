@@ -21,14 +21,22 @@ $materiaModel = new MateriaModel($pdo);
 $rolSesion = $_SESSION['rol'] ?? '';
 $idUsuario = $_SESSION['id_usuario'] ?? 0;
 
-// Si es un tutor, obtiene su propio id_tutor; si es admin, puede venir por GET
-$idTutor = $_GET['id'] ?? null;
+// Control de acceso:
+//   - tutor        -> siempre gestiona SOLO su propio perfil
+//   - administrador-> puede gestionar a cualquier tutor via ?id=
+//   - cualquier otro rol (estudiante) -> sin permisos
+$idTutor = null;
 
 if ($rolSesion === 'tutor') {
     $tutorActual = $tutorModel->obtenerPorUsuario($idUsuario);
     if ($tutorActual) {
         $idTutor = $tutorActual['id_tutor']; // El tutor siempre gestiona solo SU perfil
     }
+} elseif ($rolSesion === 'administrador') {
+    $idTutor = $_GET['id'] ?? null;
+} else {
+    setMensaje('danger', 'No tienes permisos para gestionar la disponibilidad de tutores.');
+    redirigir('../views/estudiante/panel.php');
 }
 
 // Sin un tutor identificado no hay nada que gestionar

@@ -16,8 +16,10 @@
 
 require_once __DIR__ . '/../config/conexion.php';
 
+// SOLO CONSOLA: si alguien lo abre desde el navegador, se deniega.
 if (PHP_SAPI !== 'cli') {
-    header('Content-Type: text/plain; charset=UTF-8');
+    http_response_code(403);
+    exit('Acceso denegado. Ejecuta este script por consola: php scripts_bd/reparar_acentos.php');
 }
 
 $nombreBase = $pdo->query('SELECT DATABASE()')->fetchColumn();

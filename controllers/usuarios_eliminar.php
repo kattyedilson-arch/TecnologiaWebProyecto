@@ -12,6 +12,8 @@ require_once __DIR__ . '/../includes/funciones.php';
 require_once __DIR__ . '/../config/conexion.php';
 require_once __DIR__ . '/../models/UsuarioModel.php';
 
+requerirRol('administrador');
+
 $usuarioModel = new UsuarioModel($pdo);
 
 $id = $_GET['id'] ?? null;

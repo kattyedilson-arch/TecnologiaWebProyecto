@@ -15,6 +15,7 @@
 //   $idsMateriasAsignadas, $errores
 // =========================================================
 require_once __DIR__ . '/../../includes/verificar_sesion.php';
+requerirRol('administrador', 'tutor');
 $tituloPagina = 'Gestión de Tutor y Horarios - UPDS';
 include __DIR__ . '/../layouts/header.php';
 $rolAux = $_SESSION['rol'] ?? 'administrador';
