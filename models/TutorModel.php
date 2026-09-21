@@ -33,6 +33,30 @@ class TutorModel
     }
 
     /**
+     * Reseñas (evaluaciones) recibidas por un tutor: calificación, comentario,
+     * materia y estudiante que la dejó. Ordenadas de la más reciente a la
+     * más antigua.
+     * @param int $id_tutor Identificador del tutor
+     * @return array Reseñas del tutor
+     */
+    public function obtenerResenas($id_tutor)
+    {
+        $sql = "SELECT ev.calificacion, ev.comentario, ev.fecha_evaluacion,
+                       m.nombre_materia,
+                       ue.nombre AS est_nombre, ue.apellido AS est_apellido
+                FROM evaluaciones_tutoria ev
+                INNER JOIN tutorias tu ON ev.id_tutoria = tu.id_tutoria
+                INNER JOIN estudiantes e ON tu.id_estudiante = e.id_estudiante
+                INNER JOIN usuarios ue ON e.id_usuario = ue.id_usuario
+                INNER JOIN materias m ON tu.id_materia = m.id_materia
+                WHERE tu.id_tutor = :id_tutor
+                ORDER BY ev.fecha_evaluacion DESC";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':id_tutor' => $id_tutor]);
+        return $stmt->fetchAll();
+    }
+
+    /**
      * Busca un tutor por su identificador (incluye datos del usuario).
      * @param int $id_tutor Identificador del tutor
      * @return array|false Fila del tutor o false

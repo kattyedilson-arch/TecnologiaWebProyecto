@@ -18,7 +18,6 @@ $usuarios = $usuarioModel->obtenerTodos();
 // Métricas rápidas para la cabecera del listado
 $totalUsuarios = count($usuarios);
 $totalActivos = count(array_filter($usuarios, fn($u) => $u['estado'] === 'activo'));
-$totalAdmins  = count(array_filter($usuarios, fn($u) => $u['nombre_rol'] === 'administrador'));
 $totalTutores = count(array_filter($usuarios, fn($u) => $u['nombre_rol'] === 'tutor'));
 $totalEstud   = count(array_filter($usuarios, fn($u) => $u['nombre_rol'] === 'estudiante'));
 

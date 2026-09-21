@@ -9,6 +9,11 @@
 //   - filtrarTutores(): deshabilita los tutores que no imparten
 //     la materia elegida o que no están activos (usa data-materias
 //     y data-estado de cada <option>).
+//   - Selector de disponibilidad: al elegir el tutor se muestran
+//     los DÍAS en que atiende; al elegir un día se muestran sus
+//     horarios. Al tocar un horario se rellenan automáticamente la
+//     fecha (próximo día con ese nombre), hora_inicio y hora_fin
+//     (1 hora por defecto, tope al fin del bloque).
 //   - Al elegir modalidad virtual, hace obligatorio y tipo URL
 //     el campo lugar_o_enlace.
 //   - Verifica que la hora de fin sea posterior a la de inicio.
@@ -95,8 +100,10 @@ $volverUrl = ($rolAux === 'estudiante') ? '../views/estudiante/panel.php' : 'tut
           <!-- Disponibilidad del tutor -->
           <div class="col-md-12">
             <div class="alert alert-info d-none mb-2" id="bloqueHorarios">
-              <div class="fw-bold mb-2"><i class="bi bi-clock-history me-1"></i>Horarios en que atiende este docente tutor:</div>
-              <div id="listaHorarios" class="d-flex flex-wrap gap-2"></div>
+              <div class="fw-bold mb-2"><i class="bi bi-calendar-week me-1"></i>Días en que atiende este docente (elige un día y luego la hora):</div>
+              <div id="listarDias" class="d-flex flex-wrap gap-2 mb-3"></div>
+              <div class="fw-bold mb-2 d-none" id="tituloHoras"><i class="bi bi-clock-history me-1"></i>Horarios disponibles ese día:</div>
+              <div id="listarHoras" class="d-flex flex-wrap gap-2"></div>
               <div class="form-text mt-2" id="infoDia"></div>
             </div>
           </div>
@@ -194,14 +201,19 @@ $volverUrl = ($rolAux === 'estudiante') ? '../views/estudiante/panel.php' : 'tut
   selMateria.addEventListener('change', filtrarTutores);
   filtrarTutores();
 
-  // ---- Mostrar disponibilidad del tutor seleccionado ----
+  // ---- Selector de disponibilidad: días y horarios del tutor ----
   const selFecha        = document.querySelector('[name="fecha"]');
   const ini             = document.querySelector('[name="hora_inicio"]');
   const fin             = document.querySelector('[name="hora_fin"]');
   const bloqueHorarios  = document.getElementById('bloqueHorarios');
-  const listaHorarios   = document.getElementById('listaHorarios');
+  const listarDias      = document.getElementById('listarDias');
+  const tituloHoras     = document.getElementById('tituloHoras');
+  const listarHoras     = document.getElementById('listarHoras');
   const infoDia         = document.getElementById('infoDia');
   const diasSemana      = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
+
+  let seleccionDia    = null; // día de atención elegido por el estudiante (ej: 'Lunes')
+  let seleccionBloque = null; // bloque elegido: { inicio, fin }
 
   // Mapa: id_tutor -> [{dia, inicio, fin}]
   const bloquesPorTutor = {};
@@ -218,65 +230,160 @@ $volverUrl = ($rolAux === 'estudiante') ? '../views/estudiante/panel.php' : 'tut
     return new Date(+p[0], +p[1] - 1, +p[2]).getDay();
   }
 
-  function renderHorarios() {
-    const tutor = selTutor.value;
-    if (tutor === '') {
-      bloqueHorarios.classList.add('d-none');
-      return;
-    }
-    const bloques = bloquesPorTutor[tutor] || [];
-    bloqueHorarios.classList.remove('d-none');
-
-    if (bloques.length === 0) {
-      listaHorarios.innerHTML = '<span class="badge rounded-pill px-3 py-2 border bg-light text-warning">Sin horarios declarados aún</span>';
-    } else {
-      listaHorarios.innerHTML = bloques.map(b =>
-        '<span class="badge rounded-pill px-3 py-2 border bg-light text-dark"><i class="bi bi-calendar-event me-1 text-primary"></i>' + b.dia + ' ' + b.inicio + ' – ' + b.fin + '</span>'
-      ).join('');
-    }
-    actualizarInfoDia();
-  }
-
-  function actualizarInfoDia() {
-    const tutor = selTutor.value;
-    const fecha = selFecha.value;
-    if (!tutor || !fecha) { infoDia.textContent = ''; return; }
-
-    const dia = diasSemana[diaSemanaDe(fecha)];
-    const coincide = (bloquesPorTutor[tutor] || []).filter(b => b.dia === dia);
-
-    if (coincide.length === 0) {
-      infoDia.innerHTML = '<i class="bi bi-exclamation-circle me-1 text-danger"></i>El día elegido (<b>' + dia + '</b>): este tutor <b>no atiende ese día</b>. Elige un día con horario disponible.';
-    } else {
-      infoDia.innerHTML = '<i class="bi bi-check-circle me-1 text-success"></i>El día elegido (<b>' + dia + '</b>) coincide con sus horarios: atiende de ' + coincide.map(b => '<b>' + b.inicio + ' a ' + b.fin + '</b>').join(' y ') + '.';
-    }
-  }
-
-  // La hora de fin se completa automáticamente (1 hora por defecto)
   function sumarMinutos(hora, minutos) {
     const [hh, mm] = hora.split(':').map(Number);
     const t = (hh * 60 + mm + minutos) % (24 * 60);
     return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0');
   }
 
-  selTutor.addEventListener('change', renderHorarios);
+  // Devuelve la próxima fecha (YYYY-MM-DD) que cae en el día 'dia'
+  function siguienteFechaDeDia(dia) {
+    const obj = diasSemana.indexOf(dia);          // Lunes -> 1 ... Sabado -> 6
+    const hoy = new Date();
+    let diff = (obj + 7 - hoy.getDay()) % 7;      // 0 = es hoy mismo
+    const dt = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + diff);
+    return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+  }
+
+  function bloquesDeTutor() {
+    return bloquesPorTutor[selTutor.value] || [];
+  }
+
+  // Paso 1: mostrar los días (únicos) en que atiende el tutor elegido
+  function renderDias() {
+    if (selTutor.value === '') {
+      bloqueHorarios.classList.add('d-none');
+      return;
+    }
+    bloqueHorarios.classList.remove('d-none');
+
+    const tutoriaDias = [...new Set(bloquesDeTutor().map(b => b.dia))];
+
+    if (tutoriaDias.length === 0) {
+      listarDias.innerHTML = '<span class="badge rounded-pill px-3 py-2 border bg-light text-warning">Sin horarios declarados aún</span>';
+      tituloHoras.classList.add('d-none');
+      listarHoras.innerHTML = '';
+      seleccionDia = null;
+      seleccionBloque = null;
+      infoDia.innerHTML = '';
+      return;
+    }
+
+    listarDias.innerHTML = tutoriaDias.map(d =>
+      '<button type="button" class="btn btn-sm rounded-pill px-3 border ' + (seleccionDia === d ? 'btn-primary text-white' : 'btn-light text-dark') + '" data-dia="' + d + '">' +
+        '<i class="bi bi-calendar-event me-1"></i>' + d +
+      '</button>'
+    ).join('');
+    renderHoras();
+  }
+
+  // Paso 2: mostrar los bloques horarios del día seleccionado
+  function renderHoras() {
+    tituloHoras.classList.toggle('d-none', !seleccionDia);
+    if (!seleccionDia) {
+      listarHoras.innerHTML = '';
+      actualizarInfoDia();
+      return;
+    }
+
+    const bloques = bloquesDeTutor().filter(b => b.dia === seleccionDia);
+    if (bloques.length === 0) {
+      listarHoras.innerHTML = '<span class="badge rounded-pill px-3 py-2 border bg-light text-warning">Sin horarios para ese día aún</span>';
+    } else {
+      listarHoras.innerHTML = bloques.map(b =>
+        '<button type="button" class="btn btn-sm rounded-pill px-3 border ' +
+          (seleccionBloque && seleccionBloque.inicio === b.inicio && seleccionBloque.fin === b.fin ? 'btn-success text-white' : 'btn-light text-dark') +
+          '" data-inicio="' + b.inicio + '" data-fin="' + b.fin + '">' +
+          '<i class="bi bi-clock me-1"></i>' + b.inicio + ' – ' + b.fin +
+        '</button>'
+      ).join('');
+    }
+    actualizarInfoDia();
+  }
+
+  // Al tocar un día
+  listarDias.addEventListener('click', e => {
+    const btn = e.target.closest('button[data-dia]');
+    if (!btn) return;
+    seleccionDia = btn.dataset.dia;
+    seleccionBloque = null;
+    renderDias();
+  });
+
+  // Al tocar un horario se rellenan solos: fecha, hora_inicio y hora_fin
+  listarHoras.addEventListener('click', e => {
+    const btn = e.target.closest('button[data-inicio]');
+    if (!btn) return;
+    const bloque = { inicio: btn.dataset.inicio, fin: btn.dataset.fin };
+    seleccionBloque = bloque;
+
+    if (selFecha.value) {
+      const diaActual = diasSemana[diaSemanaDe(selFecha.value)];
+      if (diaActual !== seleccionDia) selFecha.value = siguienteFechaDeDia(seleccionDia);
+    } else {
+      selFecha.value = siguienteFechaDeDia(seleccionDia);
+    }
+
+    ini.value = bloque.inicio;
+    const duracion = sumarMinutos(bloque.inicio, 60);
+    fin.value = duracion > bloque.fin ? bloque.fin : duracion;
+
+    renderHoras();
+  });
+
+  function actualizarInfoDia() {
+    const tutor = selTutor.value;
+    const fecha = selFecha.value;
+    if (!tutor || !fecha) { infoDia.innerHTML = ''; return; }
+
+    const fechaDia = diasSemana[diaSemanaDe(fecha)];
+
+    if (seleccionDia && seleccionDia !== fechaDia) {
+      infoDia.innerHTML = '<i class="bi bi-exclamation-circle me-1 text-warning"></i>La fecha elegida cae <b>' + fechaDia + '</b>, pero seleccionaste <b>' + seleccionDia + '</b>. Al elegir la hora la fecha se ajustará al próximo día de atención.';
+    } else if (seleccionDia && seleccionDia === fechaDia && seleccionBloque) {
+      infoDia.innerHTML = '<i class="bi bi-check-circle me-1 text-success"></i>Horario seleccionado: <b>' + seleccionDia + '</b> de ' + seleccionBloque.inicio + ' a ' + seleccionBloque.fin + ' (1 hora por defecto).';
+    } else if (seleccionDia && seleccionDia === fechaDia) {
+      infoDia.innerHTML = '<i class="bi bi-check-circle me-1 text-success"></i>El día elegido (<b>' + seleccionDia + '</b>) coincide con la fecha. Ahora selecciona la hora.';
+    } else if (!seleccionDia) {
+      if (bloquesDeTutor().some(b => b.dia === fechaDia)) {
+        infoDia.innerHTML = '<i class="bi bi-info-circle me-1"></i>El día elegido (<b>' + fechaDia + '</b>) es atendido por el tutor. Selecciona un día en la lista de arriba para ver sus horarios.';
+      } else {
+        infoDia.innerHTML = '<i class="bi bi-exclamation-circle me-1 text-danger"></i>El día elegido (<b>' + fechaDia + '</b>): este tutor <b>no atiende ese día</b>. Elige un día de la lista.';
+      }
+    }
+  }
+
+  selTutor.addEventListener('change', () => {
+    seleccionDia = null;
+    seleccionBloque = null;
+    renderDias();
+  });
   selFecha.addEventListener('change', actualizarInfoDia);
   ini.addEventListener('change', () => {
     if (!ini.value) return;
     if (!fin.value || fin.value <= ini.value) {
-      let tope = null;
-      const bloques = selTutor.value ? (bloquesPorTutor[selTutor.value] || []) : [];
-      const dia = selFecha.value ? diasSemana[diaSemanaDe(selFecha.value)] : null;
-      const coinciden = bloques.filter(b => b.dia === dia);
-      if (coinciden.length === 1) tope = coinciden[0].fin;
       let aux = sumarMinutos(ini.value, 60);
+      const tope = (seleccionBloque && seleccionDia === diasSemana[diaSemanaDe(selFecha.value)]) ? seleccionBloque.fin : null;
       if (tope && aux > tope) aux = tope;
       fin.value = aux;
     }
   });
 
-  // Al cargar (POST con errores) se refrescan los horarios del tutor elegido
-  if (selTutor.value) renderHorarios();
+  // Al cargar (POST con errores) se restaura lo ya elegido
+  if (selTutor.value) {
+    const fecha = selFecha.value;
+    const fechaDia = fecha ? diasSemana[diaSemanaDe(fecha)] : null;
+    const diasDisponibles = [...new Set(bloquesDeTutor().map(b => b.dia))];
+    if (fechaDia && diasDisponibles.includes(fechaDia)) {
+      seleccionDia = fechaDia;
+      const bloques = bloquesDeTutor().filter(b => b.dia === seleccionDia);
+      const bloqueInicial = ini.value
+        ? bloques.find(b => ini.value >= b.inicio && ini.value < b.fin)
+        : null;
+      seleccionBloque = bloqueInicial || bloques[0] || null;
+    }
+    renderDias();
+  }
 
   // Requerir URL válida en modalidad virtual
   const selModalidad = document.getElementById('selModalidad');

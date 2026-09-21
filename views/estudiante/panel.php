@@ -70,20 +70,29 @@ include __DIR__ . '/../layouts/header.php';
 ?>
 
 <div class="row g-4">
-  <!-- Banda de bienvenida -->
+  <!-- Banda de bienvenida del estudiante -->
   <div class="col-12">
     <div class="hero-band p-4 p-md-4 mb-3">
       <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-        <div>
-          <h2 class="fw-bold text-white mb-1">¡Hola, <?= htmlspecialchars($_SESSION['nombre']) ?>! 📚</h2>
-          <p class="text-white-50 mb-0">
-            <?php if (!empty($estudiante['nombre_carrera'])): ?>
-              <i class="bi bi-mortarboard me-1"></i><?= htmlspecialchars($estudiante['nombre_carrera']) ?>
-              &bull; <i class="bi bi-layers me-1"></i>Semestre <?= (int) $estudiante['semestre'] ?>
-            <?php else: ?>
-              Estudiante UPDS &bull; Toca "Mi Perfil" para completar tu ficha académica
-            <?php endif; ?>
-          </p>
+        <div class="d-flex align-items-center gap-3">
+          <div class="avatar-lg d-none d-sm-flex"><?= strtoupper(mb_substr($_SESSION['nombre'] ?? 'E', 0, 1)) ?></div>
+          <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <span class="badge text-bg-light text-dark border px-3 py-1" style="font-size:.68rem; letter-spacing:.6px; text-transform:uppercase;">
+                <i class="bi bi-mortarboard me-1"></i> Portal del Estudiante
+              </span>
+            </div>
+            <h2 class="fw-bold text-white mb-1">¡Hola, <?= htmlspecialchars($_SESSION['nombre']) ?>!</h2>
+            <p class="text-white-50 mb-0 d-flex flex-wrap gap-2 align-items-center">
+              <?php if (!empty($estudiante['nombre_carrera'])): ?>
+                <span><i class="bi bi-mortarboard me-1"></i><?= htmlspecialchars($estudiante['nombre_carrera']) ?></span>
+                <span class="d-none d-md-inline">•</span>
+                <span><i class="bi bi-layers me-1"></i>Semestre <?= (int) $estudiante['semestre'] ?></span>
+              <?php else: ?>
+                <span><i class="bi bi-info-circle me-1"></i>Estudiante UPDS &bull; Toca "Mi Perfil" para completar tu ficha académica</span>
+              <?php endif; ?>
+            </p>
+          </div>
         </div>
         <a href="/controllers/tutorias_solicitar.php" class="btn btn-warning text-dark fw-bold d-flex align-items-center gap-2 shadow-sm">
           <i class="bi bi-calendar-plus-fill"></i>
@@ -171,8 +180,13 @@ include __DIR__ . '/../layouts/header.php';
                   <small class="text-muted"><?= htmlspecialchars($t['nombre_carrera'] ?? 'General') ?></small>
                 </td>
                 <td>
-                  <div class="fw-medium text-dark">Prof. <?= htmlspecialchars($t['tut_nombre'] . ' ' . $t['tut_apellido']) ?></div>
-                  <small class="text-muted"><?= htmlspecialchars($t['tut_correo']) ?></small>
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="avatar-md" style="width:34px; height:34px; font-size:.72rem;"><?= iniciales($t['tut_nombre'] ?? '', $t['tut_apellido'] ?? '') ?></div>
+                    <div>
+                      <div class="fw-medium text-dark">Prof. <?= htmlspecialchars($t['tut_nombre'] . ' ' . $t['tut_apellido']) ?></div>
+                      <small class="text-muted"><?= htmlspecialchars($t['tut_correo']) ?></small>
+                    </div>
+                  </div>
                 </td>
                 <td>
                   <span class="badge bg-light text-dark border"><?= ucfirst($t['modalidad']) ?></span>

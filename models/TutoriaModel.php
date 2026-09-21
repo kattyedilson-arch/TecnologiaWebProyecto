@@ -176,17 +176,6 @@ class TutoriaModel
     }
 
     /**
-     * Elimina directamente una tutoria (poco usado; se prefiere cancelar).
-     * @param int $id_tutoria Identificador de la tutoría
-     * @return bool True si se eliminó
-     */
-    public function eliminar($id_tutoria)
-    {
-        $stmt = $this->pdo->prepare("DELETE FROM tutorias WHERE id_tutoria = :id");
-        return $stmt->execute([':id' => $id_tutoria]);
-    }
-
-    /**
      * Verifica solapamiento de horario al AGENDAR una tutoria.
      * Evita que un tutor tenga dos sesiones activas a la misma hora.
      * Solo cuentan las tutorías en estado pendiente o confirmada.

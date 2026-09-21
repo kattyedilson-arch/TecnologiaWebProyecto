@@ -61,28 +61,129 @@ class MateriaModel
     }
 
     /**
-     * Verifica si ya existe una materia con el mismo nombre en la MISMA carrera
+     * Verifica si ya existe una materia equivalente en la MISMA carrera
      * (evita materias repetidas dentro de una carrera), ignorando
-     * mayúsculas/minúsculas, tildes y espacios extra.
+     * mayúsculas/minúsculas, tildes y espacios extra. Además detecta typos
+     * o variaciones mínimas ("Base de Datos I" ~ "Bases de Datos L") usando
+     * similitud de texto, pero respetando niveles legítimos ("Programación I"
+     * vs "Programación II" NO son duplicados).
+     * La misma materia puede existir en carreras DIFERENTES (el duplicado
+     * solo se valida dentro de la carrera elegida).
      * @param string $nombre Nombre de la materia a verificar
-     * @param int $idCarrera Carrera a la que pertenece la materia
      * @param int|null $excluirId Si se indica, esa materia no cuenta (para ediciones)
-     * @return bool True si ya existe otra materia con nombre equivalente en esa carrera
+     * @param int|null $id_carrera Carrera en la que se valida el duplicado
+     * @return bool True si ya existe otra materia equivalente en esa carrera
      */
-    public function existeEnCarrera($nombre, $idCarrera, $excluirId = null)
+    public function existeNombre($nombre, $excluirId = null, $id_carrera = null)
     {
-        $nombreNorm = $this->normalizarNombre($nombre);
-        $stmt = $this->pdo->prepare("SELECT id_materia, nombre_materia FROM materias WHERE id_carrera = :idc");
-        $stmt->execute([':idc' => $idCarrera]);
+        $condiciones = ['id_carrera ' . ($id_carrera === null ? 'IS NULL' : '= :carrera')];
+        $params = [];
+        if ($id_carrera !== null) {
+            $params[':carrera'] = $id_carrera;
+        }
+        if ($excluirId !== null) {
+            $condiciones[] = 'id_materia <> :excluir_id';
+            $params[':excluir_id'] = $excluirId;
+        }
+
+        $sql = "SELECT id_materia, nombre_materia FROM materias WHERE " . implode(' AND ', $condiciones);
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
         foreach ($stmt->fetchAll() as $fila) {
-            if ($excluirId !== null && (int)$fila['id_materia'] === (int)$excluirId) {
-                continue;
-            }
-            if ($this->normalizarNombre($fila['nombre_materia']) === $nombreNorm) {
+            if ($this->esEquivalente($nombre, $fila['nombre_materia'])) {
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * Compara dos nombres de materia y determina si representan la misma
+     * materia (duplicado) o no, usando normalización + similitud de texto.
+     * @param string $nuevo Nombre nuevo/escrito a comparar
+     * @param string $existente Nombre ya guardado en el catálogo
+     * @return bool True si se consideran la misma materia
+     */
+    public function esEquivalente($nuevo, $existente)
+    {
+        $n = $this->normalizarNombre($nuevo);
+        $e = $this->normalizarNombre($existente);
+        if ($n === $e) {
+            return true;
+        }
+
+        list($baseNueva, $nivelNuevo) = $this->separarNivel($n);
+        list($baseExistente, $nivelExistente) = $this->separarNivel($e);
+
+        // Si solo cambia el nivel (I, II, III...) son materias distintas y legítimas
+        $nivelesDiferentes = $this->esNivelValido($nivelNuevo)
+            && $this->esNivelValido($nivelExistente)
+            && $this->valorNivel($nivelNuevo) !== $this->valorNivel($nivelExistente);
+
+        if ($baseNueva === $baseExistente) {
+            return !$nivelesDiferentes;
+        }
+
+        // Similitud alta: probable typo o variante (Base/Bases, I/L, acentos...)
+        similar_text($n, $e, $pct);
+        if ($pct >= 87.0) {
+            return !$nivelesDiferentes;
+        }
+        return false;
+    }
+
+    /**
+     * Separa la base del nombre de un posible sufijo de nivel (I, II, 1, 2...).
+     * @param string $texto Nombre normalizado
+     * @return array [base, nivel] donde nivel es '' si no hay sufijo
+     */
+    private function separarNivel($texto)
+    {
+        // El sufijo de nivel puede ser romano (I, II...), número (1, 2...) o la
+        // letra "l" (typo frecuente de "I", p. ej. "Programacion l").
+        if (preg_match('/^(.*?)\s+(x{0,3}(?:ix|iv|v?i{0,3})|l|\d{1,2})$/u', $texto, $m) && trim($m[1]) !== '') {
+            return [rtrim($m[1]), mb_strtolower($m[2], 'UTF-8')];
+        }
+        return [$texto, ''];
+    }
+
+    /**
+     * True si el sufijo es un nivel válido (romano I..X, "l" o número 1..99).
+     */
+    private function esNivelValido($nivel)
+    {
+        return $nivel !== '' && preg_match('/^(x{0,3}(?:ix|iv|v?i{0,3})|l|\d{1,2})$/u', $nivel) === 1;
+    }
+
+    /**
+     * Convierte un nivel a su valor arábigo para comparar ("I"=1, "1"=1, "l"=1).
+     */
+    private function valorNivel($nivel)
+    {
+        if (preg_match('/^\d{1,2}$/', $nivel)) {
+            return (int)$nivel;
+        }
+        $mapa = ['ix' => 9, 'iv' => 4, 'x' => 10, 'v' => 5, 'i' => 1, 'l' => 1];
+        $nivel = strtolower($nivel);
+        $suma = 0;
+        $i = 0;
+        $len = strlen($nivel);
+        while ($i < $len) {
+            $dos = substr($nivel, $i, 2);
+            if (isset($mapa[$dos])) {
+                $suma += $mapa[$dos];
+                $i += 2;
+                continue;
+            }
+            $uno = substr($nivel, $i, 1);
+            if (isset($mapa[$uno])) {
+                $suma += $mapa[$uno];
+                $i += 1;
+                continue;
+            }
+            $i++;
+        }
+        return $suma;
     }
 
     /**

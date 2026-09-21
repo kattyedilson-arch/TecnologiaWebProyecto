@@ -37,23 +37,6 @@ class EstudianteModel
     }
 
     /**
-     * Busca un estudiante por su identificador de perfil.
-     * @param int $id_estudiante Identificador del estudiante
-     * @return array|false Fila del estudiante o false
-     */
-    public function obtenerPorId($id_estudiante)
-    {
-        $sql = "SELECT e.*, u.nombre, u.apellido, u.correo, u.telefono, u.usuario, c.nombre_carrera
-                FROM estudiantes e
-                INNER JOIN usuarios u ON e.id_usuario = u.id_usuario
-                INNER JOIN carreras c ON e.id_carrera = c.id_carrera
-                WHERE e.id_estudiante = :id";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([':id' => $id_estudiante]);
-        return $stmt->fetch();
-    }
-
-    /**
      * Busca el perfil de estudiante de un usuario dado.
      * @param int $id_usuario Identificador del usuario en sesión
      * @return array|false Fila del estudiante o false si aún no tiene ficha

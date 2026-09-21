@@ -19,14 +19,26 @@ include __DIR__ . '/../layouts/header.php';
 
 <div class="row justify-content-center">
   <div class="col-lg-9 col-xl-8">
+    <!-- Banda de cabecera con migas de referencia académica -->
+    <nav aria-label="breadcrumb mb-2">
+      <ol class="breadcrumb mb-2 small fw-semibold">
+        <li class="breadcrumb-item"><a href="/controllers/usuarios_listar.php" class="text-decoration-none">Usuarios</a></li>
+        <li class="breadcrumb-item active">Nuevo Usuario</li>
+      </ol>
+    </nav>
     <div class="hero-band p-4 mb-4">
       <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
         <div>
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <span class="badge text-bg-light text-dark border px-3 py-1" style="font-size:.68rem; letter-spacing:.6px; text-transform:uppercase;">
+              <i class="bi bi-journal-plus me-1"></i> Alta de Cuenta
+            </span>
+          </div>
           <h3 class="fw-bold text-white mb-1 d-flex align-items-center gap-2">
             <i class="bi bi-person-plus-fill"></i>
             <span>Registrar Nuevo Usuario</span>
           </h3>
-          <p class="text-white-50 mb-0">Crea la cuenta de un administrador, tutor o estudiante.</p>
+          <p class="text-white-50 mb-0">Crea la cuenta de un administrador, tutor o estudiante de la comunidad académica.</p>
         </div>
         <a href="usuarios_listar.php" class="btn btn-light d-flex align-items-center gap-1">
           <i class="bi bi-arrow-left"></i> Volver
@@ -45,7 +57,15 @@ include __DIR__ . '/../layouts/header.php';
       </div>
     <?php endif; ?>
 
-    <div class="card card-custom p-4 p-md-5">
+    <!-- Sección: información general -->
+    <div class="card card-custom p-4 p-md-5 mb-4">
+      <div class="d-flex align-items-center gap-2 mb-4 pb-2 border-bottom">
+        <span class="stat-ico bg-indigo text-indigo" style="width:38px; height:38px; font-size:1rem;"><i class="bi bi-person-vcard"></i></span>
+        <div>
+          <h5 class="fw-bold mb-0">Datos del Usuario</h5>
+          <small class="text-muted">Información básica y asignación de rol en el sistema.</small>
+        </div>
+      </div>
       <form method="POST" autocomplete="off" class="needs-validation" novalidate>
       <?= campoCsrf() ?>
         <div class="row g-3">
@@ -60,28 +80,6 @@ include __DIR__ . '/../layouts/header.php';
               <?php endforeach; ?>
             </select>
             <div class="invalid-feedback">Debes seleccionar un rol.</div>
-          </div>
-
-          <div class="col-md-6 d-none" id="bloqueCarrera">
-            <label class="form-label fw-semibold text-secondary small text-uppercase">Carrera *</label>
-            <select name="id_carrera" id="selCarrera" class="form-select rounded-3 py-2">
-              <option value="" <?= empty($_POST['id_carrera']) ? 'selected' : '' ?>>Selecciona la carrera...</option>
-              <?php foreach ($carreras as $c): ?>
-                <option value="<?= $c['id_carrera'] ?>" <?= (isset($_POST['id_carrera']) && $_POST['id_carrera'] == $c['id_carrera']) ? 'selected' : '' ?>>
-                  <?= htmlspecialchars($c['nombre_carrera']) ?>
-                </option>
-              <?php endforeach; ?>
-            </select>
-            <div class="form-text">De aquí saldrán las materias que verá el estudiante al solicitar tutorías.</div>
-          </div>
-
-          <div class="col-md-6 d-none" id="bloqueSemestre">
-            <label class="form-label fw-semibold text-secondary small text-uppercase">Semestre *</label>
-            <select name="semestre" id="selSemestre" class="form-select rounded-3 py-2">
-              <?php for ($i = 1; $i <= 12; $i++): ?>
-                <option value="<?= $i ?>" <?= ($_POST['semestre'] ?? 1) == $i ? 'selected' : '' ?>><?= $i ?>º</option>
-              <?php endfor; ?>
-            </select>
           </div>
 
           <div class="col-md-6">
@@ -123,26 +121,72 @@ include __DIR__ . '/../layouts/header.php';
                    pattern="[0-9+\s()\-]{7,20}" placeholder="Ej: 70000001">
             <div class="invalid-feedback">Ingresa un teléfono válido.</div>
           </div>
+        </div>
+    </div>
 
-          <div class="col-md-12">
-            <label class="form-label fw-semibold text-secondary small text-uppercase">Contraseña Inicial *</label>
-            <div class="input-group">
-              <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-lock"></i></span>
-              <input type="password" id="clave" name="clave" class="form-control rounded-end-3 py-2"
-                     minlength="8" pattern="(?=.*[A-Za-z])(?=.*[0-9]).{8,}" placeholder="Mínimo 8 caracteres con letras y números" required>
-            </div>
-            <div class="invalid-feedback">La contraseña debe tener al menos 8 caracteres y combinar letras y números.</div>
-            <div class="form-text">Se guardará encriptada con Bcrypt de forma segura.</div>
+    <!-- Sección: datos académicos (solo estudiante) -->
+    <div class="card card-custom p-4 p-md-5 mb-4">
+      <div class="d-flex align-items-center gap-2 mb-4 pb-2 border-bottom">
+        <span class="stat-ico text-warning" style="width:38px; height:38px; font-size:1rem; background:#fef3c7;"><i class="bi bi-mortarboard"></i></span>
+        <div>
+          <h5 class="fw-bold mb-0">Datos Académicos</h5>
+          <small class="text-muted">Carrera y semestre. Solo aplica si el rol seleccionado es <b>Estudiante</b>.</small>
+        </div>
+      </div>
+      <div class="row g-3">
+        <div class="col-md-6 d-none" id="bloqueCarrera">
+          <label class="form-label fw-semibold text-secondary small text-uppercase">Carrera *</label>
+          <select name="id_carrera" id="selCarrera" class="form-select rounded-3 py-2">
+            <option value="" <?= empty($_POST['id_carrera']) ? 'selected' : '' ?>>Selecciona la carrera...</option>
+            <?php foreach ($carreras as $c): ?>
+              <option value="<?= $c['id_carrera'] ?>" <?= (isset($_POST['id_carrera']) && $_POST['id_carrera'] == $c['id_carrera']) ? 'selected' : '' ?>>
+                <?= htmlspecialchars($c['nombre_carrera']) ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+          <div class="form-text">De aquí saldrán las materias que verá el estudiante al solicitar tutorías.</div>
+        </div>
+
+        <div class="col-md-6 d-none" id="bloqueSemestre">
+          <label class="form-label fw-semibold text-secondary small text-uppercase">Semestre *</label>
+          <select name="semestre" id="selSemestre" class="form-select rounded-3 py-2">
+            <?php for ($i = 1; $i <= 12; $i++): ?>
+              <option value="<?= $i ?>" <?= ($_POST['semestre'] ?? 1) == $i ? 'selected' : '' ?>><?= $i ?>º</option>
+            <?php endfor; ?>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sección: contraseña -->
+    <div class="card card-custom p-4 p-md-5">
+      <div class="d-flex align-items-center gap-2 mb-4 pb-2 border-bottom">
+        <span class="stat-ico bg-success bg-opacity-10 text-success" style="width:38px; height:38px; font-size:1rem;"><i class="bi bi-shield-lock"></i></span>
+        <div>
+          <h5 class="fw-bold mb-0">Seguridad de la Cuenta</h5>
+          <small class="text-muted">La contraseña se almacenará cifrada con Bcrypt.</small>
+        </div>
+      </div>
+      <div class="row g-3">
+        <div class="col-md-12">
+          <label class="form-label fw-semibold text-secondary small text-uppercase">Contraseña Inicial *</label>
+          <div class="input-group">
+            <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-lock"></i></span>
+            <input type="password" id="clave" name="clave" class="form-control rounded-end-3 py-2"
+                   minlength="8" pattern="(?=.*[A-Za-z])(?=.*[0-9]).{8,}" placeholder="Mínimo 8 caracteres con letras y números" required>
           </div>
+          <div class="invalid-feedback">La contraseña debe tener al menos 8 caracteres y combinar letras y números.</div>
+          <div class="form-text">Se guardará encriptada con Bcrypt de forma segura.</div>
         </div>
+      </div>
 
-        <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
-          <a href="usuarios_listar.php" class="btn btn-light px-4 py-2 rounded-3">Cancelar</a>
-          <button type="submit" class="btn btn-primary px-4 py-2 rounded-3 shadow-sm d-flex align-items-center gap-2">
-            <i class="bi bi-save"></i>
-            <span>Guardar Usuario</span>
-          </button>
-        </div>
+      <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+        <a href="usuarios_listar.php" class="btn btn-light px-4 py-2 rounded-3">Cancelar</a>
+        <button type="submit" class="btn btn-primary px-4 py-2 rounded-3 shadow-sm d-flex align-items-center gap-2">
+          <i class="bi bi-save"></i>
+          <span>Guardar Usuario</span>
+        </button>
+      </div>
       </form>
     </div>
   </div>

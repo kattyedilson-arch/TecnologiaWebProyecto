@@ -65,7 +65,7 @@ include __DIR__ . '/../layouts/header.php';
             <?php endforeach; ?>
           </select>
           <div class="invalid-feedback">Debes seleccionar la carrera a la que pertenece la materia.</div>
-          <div class="form-text">Asocia la materia a su carrera; no se permiten materias repetidas dentro de la misma carrera.</div>
+          <div class="form-text">Asocia la materia a su carrera. No se admite la misma materia repetida dentro de una misma carrera, pero sí puede existir en varias carreras (y "Cálculo I" y "Cálculo II" son materias distintas).</div>
         </div>
 
         <div class="d-flex justify-content-end gap-2 pt-3 border-top">

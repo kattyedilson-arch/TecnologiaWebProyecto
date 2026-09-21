@@ -14,9 +14,6 @@ requerirRol('administrador');
 
 $tutoriaModel = new TutoriaModel($pdo);
 
-$rolSesion = $_SESSION['rol'] ?? '';
-$idUsuario = $_SESSION['id_usuario'] ?? 0;
-
 // Filtro por estado desde GET (?estado=pendiente, etc.)
 $filtroEstado = $_GET['estado'] ?? null;
 if (!in_array($filtroEstado, ['pendiente', 'confirmada', 'realizada', 'cancelada'])) {

@@ -54,18 +54,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // La carrera es obligatoria y debe existir
-    $carreraElegida = null;
     if (empty($datos['id_carrera'])) {
         $errores[] = "Debes seleccionar la carrera a la que pertenece la materia.";
-    } else {
-        $carreraElegida = $carreraModel->obtenerPorId((int)$datos['id_carrera']);
-        if (!$carreraElegida) {
-            $errores[] = "La carrera seleccionada no es válida.";
-        }
+    } elseif (!$carreraModel->obtenerPorId((int)$datos['id_carrera'])) {
+        $errores[] = "La carrera seleccionada no es válida.";
     }
-    // Duplicados: no se admite la misma materia repetida dentro de la misma carrera
-    if (empty($errores) && $materiaModel->existeEnCarrera($datos['nombre_materia'], (int)$datos['id_carrera'])) {
-        $errores[] = "Ya existe la materia \"{$datos['nombre_materia']}\" en la carrera \"{$carreraElegida['nombre_carrera']}\". No se permiten materias repetidas en la misma carrera.";
+    // Duplicados: la misma materia no puede repetirse en la misma carrera.
+    // "Cálculo I" y "Cálculo II" son materias distintas y válidas; y una
+    // misma materia puede existir en carreras diferentes.
+    if (empty($errores) && $materiaModel->existeNombre($datos['nombre_materia'], null, (int)$datos['id_carrera'])) {
+        $errores[] = "Ya existe una materia equivalente a \"{$datos['nombre_materia']}\" en esta misma carrera. No se permiten materias repetidas en la misma carrera (revisa mayúsculas, tildes o detalles del nombre).";
     }
 
     if (empty($errores)) {

@@ -22,9 +22,15 @@ $rolAux = $_SESSION['rol'] ?? 'administrador';
 $volverUrl = ($rolAux === 'tutor') ? '../views/tutor/panel.php' : 'tutores_listar.php';
 ?>
 
+<!-- Banda de cabecera -->
 <div class="hero-band p-4 mb-4">
   <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
     <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <span class="badge text-bg-light text-dark border px-3 py-1" style="font-size:.68rem; letter-spacing:.6px; text-transform:uppercase;">
+          <i class="bi bi-mortarboard me-1"></i> Configuración Docente
+        </span>
+      </div>
       <h2 class="fw-bold text-white mb-1 d-flex align-items-center gap-2">
         <i class="bi bi-calendar-range"></i>
         <span>Horarios y Especialidades</span>
@@ -52,11 +58,14 @@ $volverUrl = ($rolAux === 'tutor') ? '../views/tutor/panel.php' : 'tutores_lista
   <!-- Columna 1: Horarios de Disponibilidad -->
   <div class="col-lg-6">
     <div class="card card-custom p-4 h-100">
-      <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
-        <i class="bi bi-clock-history text-primary"></i>
-        <span>Bloques de Horarios Semanales</span>
-        <span class="badge text-bg-light border ms-auto"><?= count($disponibilidades) ?> bloque(s)</span>
-      </h5>
+      <div class="d-flex align-items-center gap-2 mb-4 pb-2 border-bottom">
+        <span class="stat-ico bg-indigo text-indigo" style="width:38px; height:38px; font-size:1rem;"><i class="bi bi-clock-history"></i></span>
+        <div class="flex-grow-1">
+          <h5 class="fw-bold mb-0">Bloques de Horarios Semanales</h5>
+          <small class="text-muted">Disponibilidad semanal para las sesiones de tutoría.</small>
+        </div>
+        <span class="badge text-bg-light border px-3 py-2"><?= count($disponibilidades) ?> bloque(s)</span>
+      </div>
 
       <!-- Lista de horarios actuales -->
       <div class="mb-4">
@@ -118,11 +127,14 @@ $volverUrl = ($rolAux === 'tutor') ? '../views/tutor/panel.php' : 'tutores_lista
   <!-- Columna 2: Materias que domina y Perfil -->
   <div class="col-lg-6">
     <div class="card card-custom p-4 mb-4">
-      <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
-        <i class="bi bi-journal-check text-primary"></i>
-        <span>Materias que Imparte</span>
-        <span class="badge text-bg-light border ms-auto"><?= count($idsMateriasAsignadas) ?> seleccionada(s)</span>
-      </h5>
+      <div class="d-flex align-items-center gap-2 mb-4 pb-2 border-bottom">
+        <span class="stat-ico bg-primary bg-opacity-10 text-primary" style="width:38px; height:38px; font-size:1rem;"><i class="bi bi-journal-check"></i></span>
+        <div class="flex-grow-1">
+          <h5 class="fw-bold mb-0">Materias que Imparte</h5>
+          <small class="text-muted">Selecciona las asignaturas que dominas para tutoría.</small>
+        </div>
+        <span class="badge text-bg-light border px-3 py-2"><?= count($idsMateriasAsignadas) ?> seleccionada(s)</span>
+      </div>
       <form method="POST">
         <?= campoCsrf() ?>
         <input type="hidden" name="accion" value="guardar_materias">
@@ -149,10 +161,13 @@ $volverUrl = ($rolAux === 'tutor') ? '../views/tutor/panel.php' : 'tutores_lista
 
     <!-- Perfil docente -->
     <div class="card card-custom p-4">
-      <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
-        <i class="bi bi-person-lines-fill text-primary"></i>
-        <span>Perfil Profesional</span>
-      </h5>
+      <div class="d-flex align-items-center gap-2 mb-4 pb-2 border-bottom">
+        <span class="stat-ico bg-success bg-opacity-10 text-success" style="width:38px; height:38px; font-size:1rem;"><i class="bi bi-person-lines-fill"></i></span>
+        <div class="flex-grow-1">
+          <h5 class="fw-bold mb-0">Perfil Profesional</h5>
+          <small class="text-muted">Tu especialidad y presentación ante los estudiantes.</small>
+        </div>
+      </div>
       <form method="POST" class="needs-validation" novalidate>
         <?= campoCsrf() ?>
         <input type="hidden" name="accion" value="actualizar_perfil">

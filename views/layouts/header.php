@@ -1,24 +1,23 @@
 <?php
 // =========================================================
-// VISTA PARCIAL: ENCABEZADO (views/layouts/header.php)
+// VISTA PARCIAL: LAYOUT PRINCIPAL (views/layouts/header.php)
 // ---------------------------------------------------------
-// Contiene el <head> con todos los estilos (Bootstrap 5.3 +
-// Inter + Bootstrap Icons + SweetAlert2) y la navbar superior.
-// La navbar se adapta según el rol de la sesión:
-//   - administrador : Dashboard, Usuarios, Materias, Carreras,
-//                     Tutores, Estudiantes y Tutorías
-//   - tutor         : Mi Panel y Mis Horarios y Materias
-//   - estudiante    : Mis Tutorías y Solicitar Tutoría
-// Además muestra el menú desplegable de perfil (Mi Perfil /
-// Cerrar Sesión) y el mensaje flash de la sesión.
+// Estructura profesional compartida por TODAS las páginas
+// internas: sidebar azul oscuro con menú por rol, barra
+// superior blanca con título y avatar del usuario, y área de
+// contenido sobre fondo claro. Bootstrap actúa como motor
+// interno (grid y utilidades) pero el tema visual es propio:
+// colores azul/blanco, sombras suaves y tipografía Inter.
 //
-// Variable opcional del controlador: $tituloPagina
+// Variable del controlador: $tituloPagina (para el título y
+// el <title>). El menú se adapta al rol de la sesión.
 // =========================================================
 require_once __DIR__ . '/../../includes/funciones.php';
 iniciarSesion();
 $rolSesion = $_SESSION['rol'] ?? '';
 $nombreSesion = $_SESSION['nombre'] ?? 'Usuario';
 $mensajeFlash = getMensaje();
+$act = basename($_SERVER['PHP_SELF']);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -30,249 +29,300 @@ $mensajeFlash = getMensaje();
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <!-- Bootstrap 5.3 CSS -->
+  <!-- Bootstrap 5.3 CSS (motor interno: grid y utilidades) -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <!-- Bootstrap Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  <!-- SweetAlert2 (solo para confirmaciones de borrado) -->
+  <!-- SweetAlert2 (confirmaciones de borrado) -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
+    /* ==================== TEMA PROPIO AZUL/BLANCO ==================== */
     :root {
-      --upds-indigo: #4f46e5;
-      --upds-indigo-dark: #3730a3;
-      --upds-night: #1e1b4b;
-      --upds-ink: #1e293b;
-      --upds-muted: #64748b;
-      --upds-bg: #f1f5f9;
+      --cn-blue: #223B87;
+      --cn-blue-dark: #1a2c6b;
+      --cn-blue-soft: #dbe4f5;
+      --cn-night: #16255c;
+      --cn-slate: #64748b;
+      --cn-ink: #0f172a;
+      --cn-bg: #f2f5fb;
+      --cn-sidebar: 264px;
+      --cn-sidebar-collapsed: 84px;
     }
+    * { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
     body {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background-color: var(--upds-bg);
-      color: var(--upds-ink);
+      background: var(--cn-bg);
+      color: var(--cn-ink);
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
+      overflow-x: hidden;
     }
-    /* Barra de navegación */
-    .navbar-custom {
-      background: linear-gradient(120deg, var(--upds-night) 0%, var(--upds-indigo-dark) 45%, var(--upds-indigo) 100%);
-      box-shadow: 0 4px 20px rgba(30, 27, 75, 0.25);
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+
+    /* ---------- SIDEBAR ---------- */
+    .app-sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: var(--cn-sidebar);
+      background: linear-gradient(180deg, #0c234d 0%, #16255c 60%, #0a1a3f 100%);
+      z-index: 1050;
+      display: flex; flex-direction: column;
+      transition: transform .3s ease, width .3s ease;
     }
-    .navbar-custom .navbar-brand {
-      display: flex;
-      align-items: center;
-      gap: .6rem;
-      font-weight: 800;
-      letter-spacing: .2px;
+    .brand-side {
+      display: flex; align-items: center; gap: .75rem;
+      padding: 1.25rem 1.25rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,.08);
     }
     .brand-logo {
-      width: 38px;
-      height: 38px;
-      border-radius: 12px;
-      background: linear-gradient(135deg, #f59e0b, #f97316);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-      font-size: 1.15rem;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.25);
-    }
-    /* Tarjetas */
-    .card-custom {
-      border: none;
-      border-radius: 16px;
-      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
-      background: #fff;
-      transition: transform .15s ease, box-shadow .15s ease;
-    }
-    .card-custom:hover { box-shadow: 0 8px 24px rgba(15, 23, 42, 0.10); }
-    .stat-card:hover { transform: translateY(-3px); }
-    /* Iconos de estadísticas */
-    .stat-ico {
-      width: 48px; height: 48px;
-      border-radius: 14px;
+      width: 42px; height: 42px; border-radius: 13px; flex-shrink: 0;
+      background: linear-gradient(135deg, #2f4ba7, #223B87);
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.35rem;
-      flex-shrink: 0;
+      color: #fff; font-size: 1.3rem;
+      box-shadow: 0 6px 14px rgba(34, 59, 135, .45);
     }
-    .stat-sub { font-size: .78rem; color: var(--upds-muted); border-top: 1px solid #f1f5f9; padding-top: .5rem; }
-    .bg-indigo { background: #e0e7ff !important; }
-    .text-indigo { color: #4338ca !important; }
-    .text-ok { color: #059669 !important; }
-    /* Banda hero para cabeceras de página */
-    .hero-band {
-      background: linear-gradient(120deg, var(--upds-night) 0%, var(--upds-indigo) 100%);
-      color: #fff;
-      border-radius: 18px;
-      box-shadow: 0 10px 30px rgba(79, 70, 229, 0.25);
+    .brand-txt b { display: block; color: #fff; font-weight: 800; font-size: .98rem; letter-spacing: -.2px; line-height: 1.1; }
+    .brand-txt span { font-size: .66rem; color: #a9b9de; text-transform: uppercase; letter-spacing: .6px; font-weight: 600; }
+    .sidebar-nav { flex: 1; overflow-y: auto; padding: .9rem .8rem; }
+    .nav-label {
+      font-size: .63rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+      color: #64748b; padding: .6rem .9rem .35rem;
     }
-    /* Avatares */
+    .sidebar-nav a {
+      display: flex; align-items: center; gap: .8rem;
+      padding: .68rem .85rem; margin-bottom: .15rem;
+      border-radius: 12px; color: #c7d2fe; font-size: .88rem; font-weight: 600;
+      text-decoration: none; transition: all .15s; white-space: nowrap;
+    }
+    .sidebar-nav a i { font-size: 1.05rem; width: 22px; text-align: center; flex-shrink: 0; }
+    .sidebar-nav a:hover { background: rgba(255,255,255,.07); color: #fff; }
+    .sidebar-nav a.active { background: #223B87; color: #fff; box-shadow: 0 6px 16px rgba(34, 59, 135,.4); }
+    .sidebar-foot { padding: .9rem 1rem; border-top: 1px solid rgba(255,255,255,.08); }
+    .sidebar-foot a { display: flex; align-items: center; gap: .7rem; color: #a9b9de; font-size: .8rem; font-weight: 600; text-decoration: none; padding: .4rem .4rem; border-radius: 10px; }
+    .sidebar-foot a:hover { color: #fff; background: rgba(255,255,255,.06); }
+
+    /* ---------- SIDEBAR COLAPSADO (iconos solos + menú flotante al hover) ---------- */
+    .app-sidebar.collapsed { width: var(--cn-sidebar-collapsed); }
+    .app-sidebar.collapsed .brand-side { justify-content: center; padding: 1.15rem .5rem .9rem; }
+    .app-sidebar.collapsed .brand-logo { width: 40px; height: 40px; font-size: 1.2rem; }
+    .app-sidebar.collapsed .brand-txt,
+    .app-sidebar.collapsed .nav-label { display: none; }
+    .app-sidebar.collapsed .sidebar-nav { padding: .9rem .65rem; overflow: visible; }
+    .app-sidebar.collapsed .sidebar-nav a,
+    .app-sidebar.collapsed .sidebar-foot a { justify-content: center; gap: 0; padding: .72rem .5rem; position: relative; }
+    .app-sidebar.collapsed .sidebar-nav a i,
+    .app-sidebar.collapsed .sidebar-foot a i { margin: 0; width: auto; }
+    .app-sidebar.collapsed .sidebar-foot { padding: .8rem .75rem; }
+    .app-sidebar.collapsed .sidebar-foot a { font-size: 1rem; }
+
+    /* Panel flotante que aparece al posar el mouse sobre un icono */
+    .app-sidebar.collapsed .sidebar-nav a span,
+    .app-sidebar.collapsed .sidebar-foot a span {
+      position: absolute;
+      left: calc(100% + 12px);
+      top: 50%;
+      transform: translateY(-50%) translateX(-6px);
+      background: #fff;
+      color: #16255c;
+      font-size: .8rem;
+      font-weight: 700;
+      letter-spacing: -.1px;
+      white-space: nowrap;
+      padding: .45rem .85rem;
+      border-radius: 10px;
+      box-shadow: 0 10px 28px rgba(15,23,42,.22);
+      border: 1px solid #e8edf5;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity .16s ease, transform .16s ease;
+      z-index: 20;
+      pointer-events: none;
+    }
+    .app-sidebar.collapsed .sidebar-nav a span::before,
+    .app-sidebar.collapsed .sidebar-foot a span::before {
+      content: "";
+      position: absolute;
+      left: -5px; top: 50%;
+      transform: translateY(-50%) rotate(45deg);
+      width: 9px; height: 9px;
+      background: #fff;
+      border-left: 1px solid #e8edf5;
+      border-bottom: 1px solid #e8edf5;
+    }
+    .app-sidebar.collapsed .sidebar-nav a:hover span,
+    .app-sidebar.collapsed .sidebar-foot a:hover span {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(-50%) translateX(0);
+    }
+
+    /* ---------- BARRA SUPERIOR ---------- */
+    .app-topbar {
+      position: fixed; top: 0; right: 0; left: var(--cn-sidebar);
+      height: 66px; background: rgba(255,255,255,.92); backdrop-filter: blur(10px);
+      border-bottom: 1px solid #e6eaf2; z-index: 1030;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 1.5rem; transition: left .3s ease;
+    }
+    .topbar-left { display: flex; align-items: center; gap: .9rem; }
+    .btn-toggle { border: 1px solid #e2e8f0; background: #fff; color: var(--cn-ink); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; cursor: pointer; }
+    .btn-toggle:hover { background: #f1f5f9; }
+    .page-title { font-size: 1.08rem; font-weight: 800; margin: 0; letter-spacing: -.3px; }
+    .topbar-right { display: flex; align-items: center; gap: .8rem; }
     .avatar-md {
-      width: 40px; height: 40px;
-      border-radius: 50%;
+      width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, #223B87, #1a2c6b); color: #fff;
       display: flex; align-items: center; justify-content: center;
       font-weight: 800; font-size: .85rem;
-      background: var(--upds-indigo);
-      color: #fff;
-      flex-shrink: 0;
     }
-    .avatar-lg {
-      width: 84px; height: 84px;
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 900; font-size: 1.8rem;
-      background: linear-gradient(135deg, var(--upds-indigo), var(--upds-indigo-dark));
-      color: #fff;
-      box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
+    .dropdown-menu { border: none; border-radius: 14px; box-shadow: 0 16px 40px rgba(15,23,42,.14); padding: .5rem; }
+    .dropdown-item { border-radius: 9px; padding: .55rem .8rem; font-size: .88rem; font-weight: 600; }
+    .dropdown-item:hover { background: #f1f5f9; color: var(--cn-blue); }
+    .dropdown-divider { margin: .35rem 0; }
+
+    /* ---------- CONTENIDO ---------- */
+    .app-main { margin-left: var(--cn-sidebar); transition: margin-left .3s ease; min-height: 100vh; display: flex; flex-direction: column; }
+    .app-content { padding: 5.4rem 1.5rem 1.5rem; flex: 1; }
+    .app-main.collapsed-sidebar { margin-left: var(--cn-sidebar-collapsed); }
+    .app-main.collapsed-sidebar ~ .app-topbar, .app-topbar.collapsed-sidebar { left: var(--cn-sidebar-collapsed); }
+    [v-cloak] { display: none !important; }
+
+    /* ---------- COMPONENTES (tema azul/blanco) ---------- */
+    .card-custom { border: 1px solid #e8edf5; border-radius: 16px; box-shadow: 0 6px 18px rgba(15,23,42,.05); background: #fff; transition: box-shadow .2s, transform .2s; }
+    .card-custom:hover { box-shadow: 0 14px 32px rgba(15,23,42,.09); }
+    .stat-card:hover { transform: translateY(-3px); }
+    .hero-band {
+      background: linear-gradient(120deg, #16255c 0%, #1a2c6b 55%, #223B87 100%);
+      color: #fff; border-radius: 18px;
+      box-shadow: 0 12px 32px rgba(30,64,175,.28);
     }
-    /* Badges por rol */
+    .stat-ico { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; flex-shrink: 0; }
+    .bg-indigo { background: #e3e9f5 !important; }
+    .text-indigo { color: #223B87 !important; }
+    .text-ok { color: #059669 !important; }
+    .avatar-lg { width: 84px; height: 84px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.8rem; background: linear-gradient(135deg, #223B87, #1a2c6b); color: #fff; box-shadow: 0 8px 20px rgba(34, 59, 135,.35); }
+    .stat-sub { font-size: .78rem; color: var(--cn-slate); border-top: 1px solid #f1f5f9; padding-top: .5rem; }
+
+    /* Botones primarios azul */
+    .btn-primary { background: #223B87; border-color: #223B87; font-weight: 600; }
+    .btn-primary:hover { background: #1a2c6b; border-color: #1a2c6b; }
+    .btn-primary.disabled, .btn-primary:disabled { background: #a9b9de; border-color: #a9b9de; }
+    .btn-success { background: #059669; border-color: #059669; font-weight: 600; }
+    .btn-info { background: #0ea5e9; border-color: #0ea5e9; color: #fff; font-weight: 600; }
+    .btn-outline-primary { color: #223B87; border-color: #c9d4ea; }
+    .btn-outline-primary:hover { background: #223B87; border-color: #223B87; }
+    .btn-icon { width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; }
+
+    /* Badges */
+    .badge-state { font-size: .72rem; font-weight: 600; }
     .badge-rol { font-size: .72rem; letter-spacing: .4px; }
     .badge-admin { background-color: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
-    .badge-tutor { background-color: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; }
+    .badge-tutor { background-color: #e3e9f5; color: #1a2c6b; border: 1px solid #a9b9de; }
     .badge-estudiante { background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+
     /* Tablas */
+    .table { --bs-table-hover-bg: #f8fafc; }
     .table > :not(caption) > * > * { padding: .8rem .75rem; }
-    .table thead th {
-      font-size: .72rem; text-transform: uppercase; letter-spacing: .5px; color: var(--upds-muted);
-    }
-    /* Botones de acción circulares */
-    .btn-icon {
-      width: 32px; height: 32px;
-      padding: 0;
-      display: inline-flex; align-items: center; justify-content: center;
-      border-radius: 10px;
-    }
-    /* Barra de página */
-    .page-title { font-weight: 800; color: var(--upds-ink); }
+    .table thead th { font-size: .72rem; text-transform: uppercase; letter-spacing: .5px; color: var(--cn-slate); background: #f8fafc; }
+    .table thead { border-bottom: 2px solid #e2e8f0; }
+
     /* Formularios */
-    .form-control:focus, .form-select:focus {
-      border-color: var(--upds-indigo);
-      box-shadow: 0 0 0 .2rem rgba(79, 70, 229, 0.15);
+    .form-control, .form-select { border-color: #dbe2ef; border-radius: 10px; }
+    .form-control:focus, .form-select:focus { border-color: #223B87; box-shadow: 0 0 0 .2rem rgba(34, 59, 135,.12); }
+    .form-check-input:checked { background-color: #223B87; border-color: #223B87; }
+
+    /* Alertas */
+    .alert { border-radius: 12px; }
+
+    /* ---------- RESPONSIVE ---------- */
+    @media (max-width: 991.98px) {
+      .app-sidebar { transform: translateX(-100%); width: var(--cn-sidebar) !important; }
+      .app-sidebar.open { transform: translateX(0); box-shadow: 0 0 60px rgba(0,0,0,.35); }
+      .app-topbar { left: 0 !important; }
+      .app-main { margin-left: 0 !important; }
+      .sidebar-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.5); z-index: 1040; display: none; }
+      .sidebar-backdrop.show { display: block; }
     }
-    .badge-state { font-size: .72rem; font-weight: 600; }
   </style>
 </head>
 <body>
 
 <?php if (isset($_SESSION['id_usuario'])): ?>
-<!-- Navbar principal del sistema -->
-<nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top">
-  <div class="container">
-    <a class="navbar-brand" href="/controllers/dashboard.php">
-      <span class="brand-logo"><i class="bi bi-mortarboard-fill"></i></span>
-      <span>UPDS Tutorías</span>
-    </a>
+<!-- ============ SIDEBAR ============ -->
+<aside class="app-sidebar collapsed" id="appSidebar">
+  <div class="brand-side">
+    <span class="brand-logo"><i class="bi bi-mortarboard-fill"></i></span>
+    <span class="brand-txt"><b>UPDS Tutorías</b><span>Apoyo Académico</span></span>
+  </div>
 
-    <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
-      <span class="navbar-toggler-icon"></span>
-    </button>
+  <nav class="sidebar-nav">
+    <div class="nav-label">Menú principal</div>
+    <?php if ($rolSesion === 'administrador'): ?>
+      <a class="<?= strpos($act, 'dashboard') !== false ? 'active' : '' ?>" href="/controllers/dashboard.php"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a>
+      <a class="<?= strpos($act, 'usuarios') !== false ? 'active' : '' ?>" href="/controllers/usuarios_listar.php"><i class="bi bi-people-fill"></i><span>Usuarios</span></a>
+      <a class="<?= strpos($act, 'materias') !== false ? 'active' : '' ?>" href="/controllers/materias_listar.php"><i class="bi bi-journal-bookmark-fill"></i><span>Materias</span></a>
+      <a class="<?= strpos($act, 'carreras') !== false ? 'active' : '' ?>" href="/controllers/carreras_listar.php"><i class="bi bi-mortarboard"></i><span>Carreras</span></a>
+      <a class="<?= strpos($act, 'tutores') !== false ? 'active' : '' ?>" href="/controllers/tutores_listar.php"><i class="bi bi-person-video3"></i><span>Tutores</span></a>
+      <a class="<?= strpos($act, 'estudiantes') !== false ? 'active' : '' ?>" href="/controllers/estudiantes_listar.php"><i class="bi bi-mortarboard-fill"></i><span>Estudiantes</span></a>
+      <a class="<?= strpos($act, 'tutorias') !== false ? 'active' : '' ?>" href="/controllers/tutorias_listar.php"><i class="bi bi-calendar-check-fill"></i><span>Tutorías</span></a>
+    <?php elseif ($rolSesion === 'tutor'): ?>
+      <a class="<?= strpos($act, 'tutor/panel') !== false ? 'active' : '' ?>" href="/views/tutor/panel.php"><i class="bi bi-speedometer2"></i><span>Mi Panel</span></a>
+      <a class="<?= strpos($act, 'disponibilidad') !== false ? 'active' : '' ?>" href="/controllers/tutores_disponibilidad.php"><i class="bi bi-clock-history"></i><span>Horarios y Materias</span></a>
+      <a class="<?= strpos($act, 'perfil') !== false ? 'active' : '' ?>" href="/controllers/perfil.php"><i class="bi bi-person-gear"></i><span>Mi Perfil</span></a>
+    <?php elseif ($rolSesion === 'estudiante'): ?>
+      <a class="<?= strpos($act, 'estudiante/panel') !== false ? 'active' : '' ?>" href="/views/estudiante/panel.php"><i class="bi bi-speedometer2"></i><span>Mi Panel</span></a>
+      <a class="<?= strpos($act, 'solicitar') !== false ? 'active' : '' ?>" href="/controllers/tutorias_solicitar.php"><i class="bi bi-calendar-plus"></i><span>Solicitar Tutoría</span></a>
+      <a class="<?= strpos($act, 'perfil') !== false ? 'active' : '' ?>" href="/controllers/perfil.php"><i class="bi bi-person-gear"></i><span>Mi Perfil</span></a>
+    <?php endif; ?>
+  </nav>
 
-    <div class="collapse navbar-collapse" id="navbarMain">
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-        <?php if ($rolSesion === 'administrador'): ?>
-          <li class="nav-item">
-            <a class="nav-link <?= strpos($_SERVER['PHP_SELF'], 'dashboard') !== false ? 'active fw-bold' : 'text-white-50' ?> d-flex align-items-center gap-1" href="/controllers/dashboard.php">
-              <i class="bi bi-speedometer2"></i> Dashboard
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link <?= strpos($_SERVER['PHP_SELF'], 'usuarios') !== false ? 'active fw-bold' : 'text-white-50' ?> d-flex align-items-center gap-1" href="/controllers/usuarios_listar.php">
-              <i class="bi bi-people-fill"></i> Usuarios
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link <?= strpos($_SERVER['PHP_SELF'], 'materias') !== false ? 'active fw-bold' : 'text-white-50' ?> d-flex align-items-center gap-1" href="/controllers/materias_listar.php">
-              <i class="bi bi-journal-bookmark-fill"></i> Materias
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link <?= strpos($_SERVER['PHP_SELF'], 'carreras') !== false ? 'active fw-bold' : 'text-white-50' ?> d-flex align-items-center gap-1" href="/controllers/carreras_listar.php">
-              <i class="bi bi-mortarboard"></i> Carreras
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link <?= strpos($_SERVER['PHP_SELF'], 'tutores') !== false ? 'active fw-bold' : 'text-white-50' ?> d-flex align-items-center gap-1" href="/controllers/tutores_listar.php">
-              <i class="bi bi-person-video3"></i> Tutores
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link <?= strpos($_SERVER['PHP_SELF'], 'estudiantes') !== false ? 'active fw-bold' : 'text-white-50' ?> d-flex align-items-center gap-1" href="/controllers/estudiantes_listar.php">
-              <i class="bi bi-mortarboard-fill"></i> Estudiantes
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link <?= strpos($_SERVER['PHP_SELF'], 'tutorias') !== false ? 'active fw-bold' : 'text-white-50' ?> d-flex align-items-center gap-1" href="/controllers/tutorias_listar.php">
-              <i class="bi bi-calendar-check-fill"></i> Tutorías
-            </a>
-          </li>
-        <?php elseif ($rolSesion === 'tutor'): ?>
-          <li class="nav-item">
-            <a class="nav-link <?= strpos($_SERVER['PHP_SELF'], 'tutor/panel') !== false ? 'active fw-bold' : 'text-white-50' ?> d-flex align-items-center gap-1" href="/views/tutor/panel.php">
-              <i class="bi bi-speedometer2"></i> Mi Panel
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link <?= strpos($_SERVER['PHP_SELF'], 'disponibilidad') !== false ? 'active fw-bold' : 'text-white-50' ?> d-flex align-items-center gap-1" href="/controllers/tutores_disponibilidad.php">
-              <i class="bi bi-clock-history"></i> Mis Horarios y Materias
-            </a>
-          </li>
-        <?php elseif ($rolSesion === 'estudiante'): ?>
-          <li class="nav-item">
-            <a class="nav-link <?= strpos($_SERVER['PHP_SELF'], 'estudiante/panel') !== false ? 'active fw-bold' : 'text-white-50' ?> d-flex align-items-center gap-1" href="/views/estudiante/panel.php">
-              <i class="bi bi-calendar2-check"></i> Mis Tutorías
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link <?= strpos($_SERVER['PHP_SELF'], 'solicitar') !== false ? 'active fw-bold' : 'text-white-50' ?> d-flex align-items-center gap-1" href="/controllers/tutorias_solicitar.php">
-              <i class="bi bi-calendar-plus"></i> Solicitar Tutoría
-            </a>
-          </li>
-        <?php endif; ?>
+  <div class="sidebar-foot">
+    <a href="/"><i class="bi bi-globe2"></i><span>Ver sitio público</span></a>
+    <a href="/controllers/logout.php" style="color:#fca5a5;"><i class="bi bi-box-arrow-right"></i><span>Cerrar Sesión</span></a>
+  </div>
+</aside>
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+<!-- ============ BARRA SUPERIOR ============ -->
+<header class="app-topbar collapsed-sidebar" id="appTopbar">
+  <div class="topbar-left">
+    <button class="btn-toggle" id="btnSidebarToggle" type="button" aria-label="Alternar menú"><i class="bi bi-list"></i></button>
+    <h1 class="page-title"><?= htmlspecialchars($tituloPagina ?? 'Panel de Control') ?></h1>
+  </div>
+  <div class="topbar-right">
+    <div class="dropdown">
+      <button class="btn d-flex align-items-center gap-2 rounded-3 px-2 py-1 border-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="background:transparent;">
+        <span class="avatar-md">
+          <?php
+            $iniNombre = mb_substr($nombreSesion, 0, 1);
+            $segPalabra = explode(' ', $nombreSesion);
+            $iniSegundo = isset($segPalabra[1]) ? mb_substr($segPalabra[1], 0, 1) : '';
+            echo strtoupper($iniNombre . $iniSegundo);
+          ?>
+        </span>
+        <span class="d-none d-md-inline text-start lh-sm me-1">
+          <span class="d-block fw-bold" style="font-size:.82rem;"><?= htmlspecialchars($nombreSesion) ?></span>
+          <span class="d-block text-uppercase" style="font-size:.6rem; opacity:.8; color:#223B87;"><?= htmlspecialchars($rolSesion) ?></span>
+        </span>
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item d-flex align-items-center gap-2" href="/controllers/perfil.php"><i class="bi bi-person-gear text-primary"></i> Mi Perfil</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item d-flex align-items-center gap-2 text-danger" href="/controllers/logout.php"><i class="bi bi-box-arrow-right"></i> Cerrar Sesión</a></li>
       </ul>
-
-      <!-- Perfil de usuario y menú de salida -->
-      <div class="d-flex align-items-center gap-2">
-        <div class="dropdown">
-          <button class="btn btn-light d-flex align-items-center gap-2 rounded-3 px-2 py-1 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <span class="avatar-md" style="background:#fff; color:var(--upds-indigo); font-size:.75rem;">
-              <?php
-                $iniNombre = mb_substr($nombreSesion, 0, 1);
-                $segPalabra = explode(' ', $nombreSesion);
-                $iniSegundo = isset($segPalabra[1]) ? mb_substr($segPalabra[1], 0, 1) : '';
-                echo strtoupper($iniNombre . $iniSegundo);
-              ?>
-            </span>
-            <span class="d-none d-md-inline text-start lh-sm me-1">
-              <span class="d-block fw-bold" style="font-size:.82rem;"><?= htmlspecialchars($nombreSesion) ?></span>
-              <span class="d-block text-uppercase" style="font-size:.6rem; opacity:.8;"><?= htmlspecialchars($rolSesion) ?></span>
-            </span>
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3">
-            <li>
-              <a class="dropdown-item d-flex align-items-center gap-2" href="/controllers/perfil.php">
-                <i class="bi bi-person-gear text-primary"></i> Mi Perfil
-              </a>
-            </li>
-            <li><hr class="dropdown-divider"></li>
-            <li>
-              <a class="dropdown-item d-flex align-items-center gap-2 text-danger" href="/controllers/logout.php">
-                <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
-              </a>
-            </li>
-          </ul>
-        </div>
-      </div>
     </div>
   </div>
-</nav>
-<?php endif; ?>
+</header>
 
-<main class="container py-4 flex-grow-1">
-
+<!-- ============ CONTENIDO ============ -->
+<main class="app-main collapsed-sidebar" id="appMain">
+  <div class="app-content">
 <?php if ($mensajeFlash): ?>
   <?php $tipoIcono = $mensajeFlash['tipo'] === 'success' ? 'check-circle-fill' : ($mensajeFlash['tipo'] === 'danger' ? 'exclamation-triangle-fill' : 'info-circle-fill'); ?>
-  <div class="alert alert-<?= htmlspecialchars($mensajeFlash['tipo']) ?> d-flex align-items-center gap-2 py-2 px-3 rounded-3 shadow-sm" data-flash-toast>
+  <div class="alert alert-<?= htmlspecialchars($mensajeFlash['tipo']) ?> d-flex align-items-center gap-2 py-2 px-3 rounded-3 shadow-sm mb-3" data-flash-toast>
     <i class="bi bi-<?= $tipoIcono ?> fs-5 flex-shrink-0"></i>
     <div class="fw-semibold"><?= htmlspecialchars($mensajeFlash['texto']) ?></div>
   </div>
+<?php endif; ?>
+<?php else: ?>
+<main>
 <?php endif; ?>

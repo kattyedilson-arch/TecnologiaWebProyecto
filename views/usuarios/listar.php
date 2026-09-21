@@ -4,13 +4,14 @@
 // ---------------------------------------------------------
 // Requiere sesión. Muestra métricas rápidas (total, activos,
 // tutores y estudiantes) y una tabla de usuarios con buscador
-// en vivo (filtra por nombre, usuario, correo o rol).
+// en vivo (filtra por nombre, usuario, correo o rol) y filtros
+// por chip de rol (cliente).
 // Cada fila ofrece acciones de editar y eliminar; el botón
 // eliminar está deshabilitado para el propio usuario en sesión
 // y usa confirmarEliminacion() de SweetAlert2 del footer.
 // Variables del controlador (controllers/usuarios_listar.php):
 //   $usuarios, $totalUsuarios, $totalActivos,
-//   $totalAdmins, $totalTutores, $totalEstud
+//   $totalTutores, $totalEstud
 // =========================================================
 require_once __DIR__ . '/../../includes/verificar_sesion.php';
 requerirRol('administrador');
@@ -18,15 +19,20 @@ $tituloPagina = 'Gestión de Usuarios - Sistema de Tutorías';
 include __DIR__ . '/../layouts/header.php';
 ?>
 
-<!-- Banda de cabecera -->
+<!-- Banda de cabecera institucional -->
 <div class="hero-band p-4 mb-4">
   <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
     <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <span class="badge text-bg-light text-dark border px-3 py-1" style="font-size:.68rem; letter-spacing:.6px; text-transform:uppercase;">
+          <i class="bi bi-mortarboard me-1"></i> Registro Académico
+        </span>
+      </div>
       <h2 class="fw-bold text-white mb-1 d-flex align-items-center gap-2">
         <i class="bi bi-people-fill"></i>
-        <span>Usuarios del Sistema</span>
+        <span>Gestión de Usuarios</span>
       </h2>
-      <p class="text-white-50 mb-0">Administra las cuentas de administradores, tutores y estudiantes registrados.</p>
+      <p class="text-white-50 mb-0">Administra las cuentas de administradores, tutores y estudiantes de la comunidad académica.</p>
     </div>
     <a href="usuarios_crear.php" class="btn btn-warning text-dark fw-bold d-flex align-items-center gap-2 shadow-sm px-3 py-2 rounded-3">
       <i class="bi bi-person-plus-fill"></i>
@@ -43,7 +49,7 @@ include __DIR__ . '/../layouts/header.php';
         <div class="stat-ico bg-primary bg-opacity-10 text-primary"><i class="bi bi-people-fill"></i></div>
         <div>
           <h4 class="fw-bold mb-0 text-dark"><?= $totalUsuarios ?></h4>
-          <small class="text-muted">Total usuarios</small>
+          <small class="text-muted">Total cuentas</small>
         </div>
       </div>
     </div>
@@ -65,7 +71,7 @@ include __DIR__ . '/../layouts/header.php';
         <div class="stat-ico bg-indigo text-indigo"><i class="bi bi-person-video3"></i></div>
         <div>
           <h4 class="fw-bold mb-0 text-dark"><?= $totalTutores ?></h4>
-          <small class="text-muted">Tutores</small>
+          <small class="text-muted">Docentes tutores</small>
         </div>
       </div>
     </div>
@@ -84,10 +90,19 @@ include __DIR__ . '/../layouts/header.php';
 </div>
 
 <div class="card card-custom shadow-sm overflow-hidden">
-  <div class="card-header bg-white py-3 border-0 d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2">
-    <div class="input-group" style="max-width: 340px;">
-      <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
-      <input type="text" id="buscadorUsuarios" class="form-control bg-light border-start-0" placeholder="Buscar por nombre, usuario, correo o rol...">
+  <div class="card-header bg-white py-3 border-0 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <!-- Filtros por rol (cliente) -->
+      <div class="btn-group btn-group-sm" role="group" aria-label="Filtrar por rol">
+        <button type="button" class="btn btn-outline-primary fw-semibold filtro-rol active" data-rol="todos">Todos</button>
+        <button type="button" class="btn btn-outline-primary fw-semibold filtro-rol" data-rol="administrador">Admin</button>
+        <button type="button" class="btn btn-outline-primary fw-semibold filtro-rol" data-rol="tutor">Tutor</button>
+        <button type="button" class="btn btn-outline-primary fw-semibold filtro-rol" data-rol="estudiante">Estudiante</button>
+      </div>
+      <div class="input-group input-group-sm" style="width: 250px;">
+        <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+        <input type="text" id="buscadorUsuarios" class="form-control bg-light border-start-0" placeholder="Buscar nombre, correo o usuario...">
+      </div>
     </div>
     <span class="badge text-bg-light border px-3 py-2"><?= count($usuarios) ?> registro(s)</span>
   </div>
@@ -112,7 +127,7 @@ include __DIR__ . '/../layouts/header.php';
             if ($u['nombre_rol'] === 'tutor') $badgeRol = 'badge-tutor';
             if ($u['nombre_rol'] === 'estudiante') $badgeRol = 'badge-estudiante';
           ?>
-          <tr>
+          <tr data-rol="<?= htmlspecialchars($u['nombre_rol']) ?>">
             <td class="ps-4">
               <div class="d-flex align-items-center gap-3">
                 <div class="avatar-md"><?= iniciales($u['nombre'], $u['apellido']) ?></div>
@@ -175,14 +190,33 @@ include __DIR__ . '/../layouts/header.php';
 </div>
 
 <script>
-  document.getElementById('buscadorUsuarios')?.addEventListener('keyup', function() {
-    const valor = this.value.toLowerCase();
-    const filas = document.querySelectorAll('#tablaUsuarios tbody tr');
-    filas.forEach(fila => {
-      const texto = fila.textContent.toLowerCase();
-      fila.style.display = texto.includes(valor) ? '' : 'none';
+  (function() {
+    const tabla = document.getElementById('tablaUsuarios');
+    if (!tabla) return;
+    const filas = Array.prototype.slice.call(tabla.querySelectorAll('tbody tr[data-rol]'));
+    const buscador = document.getElementById('buscadorUsuarios');
+    const chips = document.querySelectorAll('.filtro-rol');
+    let rolFiltro = 'todos';
+
+    function aplicarFiltro() {
+      const q = (buscador ? buscador.value : '').toLowerCase();
+      filas.forEach(f => {
+        const okRol = rolFiltro === 'todos' || f.getAttribute('data-rol') === rolFiltro;
+        const okQ = f.textContent.toLowerCase().includes(q);
+        f.style.display = (okRol && okQ) ? '' : 'none';
+      });
+    }
+
+    if (buscador) buscador.addEventListener('keyup', aplicarFiltro);
+    chips.forEach(chip => {
+      chip.addEventListener('click', function() {
+        chips.forEach(c => c.classList.remove('active'));
+        this.classList.add('active');
+        rolFiltro = this.getAttribute('data-rol');
+        aplicarFiltro();
+      });
     });
-  });
+  })();
 </script>
 
 <?php include __DIR__ . '/../layouts/footer.php'; ?>

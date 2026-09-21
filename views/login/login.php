@@ -2,15 +2,12 @@
 // =========================================================
 // VISTA: PANTALLA DE INICIO DE SESIÓN (views/login/login.php)
 // ---------------------------------------------------------
-// Página de acceso al sistema con diseño de dos columnas:
-//   - Izquierda: panel de identidad UPDS con las ventajas de
-//     la plataforma (solicitar tutorías, docentes y
-//     retroalimentación) visible en pantallas grandes.
-//   - Derecha : formulario de acceso (usuario o correo +
-//     contraseña) que envía a controllers/login_procesar.php.
-// Si el usuario ya tiene sesión activa, se redirige a su
-// panel según el rol. Muestra también las cuentas demo y el
-// mensaje de error guardado en $_SESSION['login_error'].
+// Página de acceso rediseñada con identidad visual propia
+// (sin look de Bootstrap): CSS puro + interacción con VUE 3.
+// La lógica del sistema NO cambia: envía el POST a
+// controllers/login_procesar.php con el token CSRF, redirige
+// a su panel si ya hay sesión y muestra el error guardado en
+// $_SESSION['login_error'].
 // =========================================================
 require_once __DIR__ . '/../../includes/funciones.php';
 iniciarSesion();
@@ -25,6 +22,21 @@ if (isset($_SESSION['id_usuario'])) {
     }
     exit;
 }
+
+// Cifras reales para el panel informativo (si la BD responde)
+$stats = ['usuarios' => 0, 'materias' => 0, 'tutores' => 0];
+try {
+    require_once __DIR__ . '/../../config/conexion.php';
+    require_once __DIR__ . '/../../models/DashboardModel.php';
+    $r = (new DashboardModel($pdo))->obtenerResumenGlobal();
+    $stats = [
+        'usuarios' => (int)$r['total_usuarios'],
+        'materias' => (int)$r['total_materias'],
+        'tutores'  => (int)$r['total_tutores'],
+    ];
+} catch (Throwable $e) {
+    error_log('Login stats: ' . $e->getMessage());
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -32,165 +44,335 @@ if (isset($_SESSION['id_usuario'])) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Iniciar Sesión - Sistema de Tutorías UPDS</title>
-  <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <!-- Bootstrap 5.3 CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Bootstrap Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <style>
+    [v-cloak] { display: none !important; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
       min-height: 100vh;
+      background: #0f0c29;
+      background: linear-gradient(135deg, #16255c 0%, #223B87 50%, #1a2c6b 100%);
+      color: #e2e8f0;
+      overflow-x: hidden;
       display: flex;
-      align-items: stretch;
-      background: #f1f5f9;
     }
-    /* Panel izquierdo con la identidad de la plataforma */
-    .brand-panel {
-      background: linear-gradient(135deg, #1e1b4b 0%, #3730a3 45%, #4f46e5 100%);
-      color: #fff;
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      padding: 3.5rem;
+    /* ---- Orbes animados de fondo ---- */
+    .orb { position: fixed; border-radius: 50%; filter: blur(90px); opacity: .45; z-index: 0; }
+    .orb-1 { width: 480px; height: 480px; background: #223B87; top: -140px; left: -140px; animation: drift 16s ease-in-out infinite; }
+    .orb-2 { width: 420px; height: 420px; background: #f59e0b; bottom: -160px; right: -120px; animation: drift 20s ease-in-out infinite reverse; }
+    .orb-3 { width: 300px; height: 300px; background: #2f4ba7; top: 40%; left: 55%; opacity: .25; animation: drift 24s ease-in-out infinite; }
+    @keyframes drift {
+      0%, 100% { transform: translate(0, 0); }
+      33% { transform: translate(40px, -50px); }
+      66% { transform: translate(-30px, 40px); }
     }
-    .brand-panel::before, .brand-panel::after {
-      content: '';
-      position: absolute;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.05);
+    /* ---- Rejilla sutil ---- */
+    .grid-overlay {
+      position: fixed; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+      background-size: 56px 56px;
     }
-    .brand-panel::before { width: 340px; height: 340px; top: -90px; right: -90px; }
-    .brand-panel::after  { width: 260px; height: 260px; bottom: -70px; left: -70px; }
+    .wrap {
+      position: relative; z-index: 1;
+      width: 100%; min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+    /* ---- Barra superior ---- */
+    .topbar {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.25rem 2rem;
+      max-width: 1280px; width: 100%; margin: 0 auto;
+    }
+    .brand { display: flex; align-items: center; gap: .75rem; text-decoration: none; }
     .brand-logo {
-      width: 62px; height: 62px;
-      border-radius: 18px;
+      width: 46px; height: 46px; border-radius: 14px;
       background: linear-gradient(135deg, #f59e0b, #f97316);
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.9rem;
-      box-shadow: 0 10px 24px rgba(0,0,0,0.3);
+      font-size: 1.4rem; color: #fff;
+      box-shadow: 0 8px 20px rgba(245,158,11,.4);
     }
+    .brand-name { font-weight: 800; color: #fff; letter-spacing: -.3px; line-height: 1.1; }
+    .brand-sub { font-size: .7rem; color: #a9b9de; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; }
+    .link-home { color: #a9b9de; text-decoration: none; font-size: .85rem; font-weight: 600; display: flex; align-items: center; gap: .5rem; transition: color .2s; }
+    .link-home:hover { color: #fff; }
+    /* ---- Contenido principal ---- */
+    .content {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      padding: 2rem 1.5rem;
+    }
+    .login-grid {
+      max-width: 1120px; width: 100%;
+      display: grid; grid-template-columns: 1.1fr .9fr;
+      gap: 3rem; align-items: center;
+    }
+    /* ---- Panel izquierdo (marca) ---- */
+    .brand-panel { display: none; flex-direction: column; gap: 1.25rem; }
+    @media (min-width: 992px) { .brand-panel { display: flex; } }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: .5rem;
+      background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
+      padding: .45rem 1rem; border-radius: 999px;
+      font-size: .78rem; font-weight: 700; color: #e0e7ff; letter-spacing: .3px;
+      width: fit-content;
+    }
+    .eyebrow i { color: #fbbf24; }
+    .brand-panel h1 {
+      font-size: clamp(2.2rem, 3.6vw, 3rem);
+      font-weight: 900; color: #fff; letter-spacing: -1.5px; line-height: 1.15;
+    }
+    .brand-panel h1 span { color: transparent; background: linear-gradient(90deg,#fbbf24,#f97316); -webkit-background-clip: text; background-clip: text; }
+    .brand-panel p.lead { color: #c9d4ea; line-height: 1.7; max-width: 480px; font-size: .98rem; }
+    .feature-list { display: flex; flex-direction: column; gap: 1rem; margin-top: .75rem; }
     .feature-item { display: flex; gap: .9rem; align-items: flex-start; }
     .feature-ico {
-      width: 40px; height: 40px; border-radius: 12px;
-      background: rgba(255,255,255,0.12);
+      width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
+      background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.1);
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.1rem; flex-shrink: 0;
+      color: #fbbf24; font-size: 1.05rem;
     }
-    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
-    .login-card { max-width: 440px; width: 100%; }
-    .btn-login {
-      background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
-      border: none;
-      font-weight: 700;
-      letter-spacing: .3px;
-      box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
+    .feature-txt b { display: block; font-size: .9rem; color: #fff; }
+    .feature-txt span { font-size: .8rem; color: #a9b9de; }
+    .stat-strip { display: flex; gap: 2rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,.1); }
+    .stat-strip div b { display: block; font-size: 1.5rem; font-weight: 900; color: #fff; }
+    .stat-strip div span { font-size: .75rem; color: #a9b9de; }
+    /* ---- Tarjeta de login ---- */
+    .login-card {
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 24px;
+      padding: 2.25rem;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 30px 60px rgba(0,0,0,.35);
+      animation: rise .6s ease both;
     }
-    .btn-login:hover { background: linear-gradient(135deg, #3730a3 0%, #312e81 100%); }
-    .demo-badge { background: #eef2ff; border: 1px dashed #c7d2fe; }
-    .text-indigo { color: #4338ca !important; }
-    .badge-rol { font-size: .75rem; letter-spacing: .4px; padding: .4em .9em; }
-    .badge-admin { background-color: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
-    .badge-tutor { background-color: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; }
-    .badge-estudiante { background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+    @keyframes rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+    .login-card h2 { color: #fff; font-weight: 800; letter-spacing: -.5px; margin-bottom: .3rem; }
+    .login-card .sub { color: #a9b9de; font-size: .9rem; margin-bottom: 1.5rem; }
+    .form-group { margin-bottom: 1.1rem; position: relative; }
+    .form-group label {
+      display: block; font-size: .78rem; font-weight: 700; color: #c9d4ea;
+      margin-bottom: .45rem; letter-spacing: .3px; text-transform: uppercase;
+    }
+    .input-wrap { position: relative; }
+    .input-wrap > i {
+      position: absolute; left: .95rem; top: 50%; transform: translateY(-50%);
+      color: #a9b9de; font-size: 1.05rem; z-index: 2;
+    }
+    .input-wrap input {
+      width: 100%; padding: .85rem 2.7rem;
+      background: rgba(15,12,41,.55);
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 12px;
+      color: #fff; font-size: .95rem;
+      outline: none; transition: border-color .15s, box-shadow .15s, background .15s;
+    }
+    .input-wrap input::placeholder { color: #64748b; }
+    .input-wrap input:focus {
+      border-color: #f59e0b;
+      box-shadow: 0 0 0 3px rgba(245,158,11,.18);
+      background: rgba(15,12,41,.75);
+    }
+    .toggle-pass {
+      position: absolute; right: .7rem; top: 50%; transform: translateY(-50%);
+      background: none; border: none; color: #a9b9de; font-size: 1.05rem;
+      cursor: pointer; padding: .35rem; border-radius: 8px; transition: color .15s;
+    }
+    .toggle-pass:hover { color: #fff; }
+    .error-alert {
+      display: flex; gap: .6rem; align-items: flex-start;
+      background: rgba(220,38,38,.12); border: 1px solid rgba(248,113,113,.35);
+      color: #fca5a5; padding: .8rem 1rem; border-radius: 12px; font-size: .85rem;
+      margin-bottom: 1.1rem; animation: rise .3s ease;
+    }
+    .error-alert i { font-size: 1rem; margin-top: 1px; }
+    .btn-submit {
+      width: 100%; margin-top: .4rem;
+      background: linear-gradient(135deg, #f59e0b, #f97316);
+      color: #16255c; border: none; border-radius: 12px;
+      padding: .95rem; font-weight: 800; font-size: .95rem; letter-spacing: .3px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: .6rem;
+      transition: transform .15s, box-shadow .15s, filter .15s;
+      box-shadow: 0 10px 24px rgba(245,158,11,.35);
+    }
+    .btn-submit:hover { transform: translateY(-2px); filter: brightness(1.06); }
+    .btn-submit:disabled { opacity: .7; cursor: not-allowed; transform: none; }
+    .spinner {
+      width: 18px; height: 18px; border: 2px solid rgba(30,27,75,.25);
+      border-top-color: #16255c; border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .orc { display: flex; align-items: center; gap: .6rem; margin: 1.4rem 0 .6rem; color: #a9b9de; font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+    .orc::before, .orc::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.12); }
+    .demo-hint { font-size: .78rem; color: #c9d4ea; margin-bottom: .7rem; display: flex; align-items: center; gap: .4rem; }
+    .demo-hint i { color: #fbbf24; }
+    .demo-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
+    .demo-btn {
+      border: 1px solid rgba(255,255,255,.16); border-radius: 10px; padding: .55rem .4rem;
+      background: rgba(255,255,255,.04); color: #e0e7ff; font-size: .8rem; font-weight: 700;
+      cursor: pointer; text-align: center; transition: all .15s; line-height: 1.2;
+    }
+    .demo-btn small { display: block; font-size: .62rem; font-weight: 400; color: #94a3b8; }
+    .demo-btn:hover { background: rgba(255,255,255,.14); transform: translateY(-1px); }
+    .login-footer { margin-top: 1.6rem; text-align: center; font-size: .78rem; color: #94a3b8; }
+    .login-footer a { color: #a9b9de; text-decoration: none; font-weight: 600; }
+    .login-footer a:hover { color: #fff; }
+    ::selection { background: rgba(245,158,11,.4); }
   </style>
 </head>
-<body>
+<body id="app-login" v-cloak>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <div class="grid-overlay"></div>
 
-<!-- Columna izquierda: identidad y beneficios -->
-<div class="col-lg-6 brand-panel d-none d-lg-flex">
-  <div class="position-relative" style="z-index: 1;">
-    <div class="brand-logo mb-4"><i class="bi bi-mortarboard-fill"></i></div>
-    <h1 class="fw-black mb-2" style="font-size: 2.4rem; letter-spacing: -.5px;">Sistema de Apoyo<br>Académico</h1>
-    <p class="text-white-50 mb-4" style="max-width: 420px;">Conectamos a estudiantes con docentes tutores para reforzar materias, resolver dudas y mejorar tu rendimiento académico.</p>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="brand" href="/">
+        <div class="brand-logo"><i class="bi bi-mortarboard-fill"></i></div>
+        <div>
+          <div class="brand-name">Tutorías UPDS</div>
+          <div class="brand-sub">Apoyo Académico</div>
+        </div>
+      </a>
+      <a class="link-home" href="/"><i class="bi bi-arrow-left"></i> Volver al inicio</a>
+    </header>
 
-    <div class="d-flex flex-column gap-3">
-      <div class="feature-item">
-        <div class="feature-ico"><i class="bi bi-calendar-plus"></i></div>
-        <div>
-          <div class="fw-bold small">Solicita tutorías en segundos</div>
-          <div class="text-white-50 small">Elige materia, docente y horario que mejor se adapte a ti.</div>
+    <main class="content">
+      <div class="login-grid">
+        <!-- Panel de marca (pantallas grandes) -->
+        <div class="brand-panel">
+          <span class="eyebrow"><i class="bi bi-stars"></i> Plataforma oficial de tutorías</span>
+          <h1>El apoyo que necesitas,<br>cuando <span>más lo necesitas.</span></h1>
+          <p class="lead">
+            Conectamos a estudiantes de la UPDS con docentes tutores especializados
+            para reforzar materias, resolver dudas y mejorar tu rendimiento en cada asignatura.
+          </p>
+          <div class="feature-list">
+            <div class="feature-item">
+              <div class="feature-ico"><i class="bi bi-calendar-heart"></i></div>
+              <div class="feature-txt"><b>Solicitud en segundos</b><span>Elige materia, docente y horario a tu medida.</span></div>
+            </div>
+            <div class="feature-item">
+              <div class="feature-ico"><i class="bi bi-patch-check"></i></div>
+              <div class="feature-txt"><b>Docentes verificados</b><span>Perfiles por especialidad y disponibilidad semanal.</span></div>
+            </div>
+            <div class="feature-item">
+              <div class="feature-ico"><i class="bi bi-star"></i></div>
+              <div class="feature-txt"><b>Evaluación continua</b><span>Califica cada sesión y mejora la calidad del apoyo.</span></div>
+            </div>
+          </div>
+          <div class="stat-strip">
+            <div><b>{{ stats.usuarios }}+</b><span>Estudiantes</span></div>
+            <div><b>{{ stats.materias }}+</b><span>Materias</span></div>
+            <div><b>{{ stats.tutores }}+</b><span>Tutores</span></div>
+          </div>
+        </div>
+
+        <!-- Tarjeta de acceso -->
+        <div class="login-card">
+          <h2>¡Bienvenido(a)! 👋</h2>
+          <p class="sub">Ingresa con tu usuario o correo institucional.</p>
+
+          <?php if (isset($_SESSION['login_error'])): ?>
+            <div class="error-alert">
+              <i class="bi bi-exclamation-triangle-fill"></i>
+              <div><?= htmlspecialchars($_SESSION['login_error']) ?></div>
+            </div>
+            <?php unset($_SESSION['login_error']); ?>
+          <?php endif; ?>
+
+          <form action="../../controllers/login_procesar.php" method="POST" autocomplete="off">
+            <?= campoCsrf() ?>
+            <div class="form-group">
+              <label for="usuarioInput">Usuario o correo</label>
+              <div class="input-wrap">
+                <i class="bi bi-person"></i>
+                <input type="text" id="usuarioInput" name="usuario" placeholder="Tu usuario o correo" required autofocus>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="passwordInput">Contraseña</label>
+              <div class="input-wrap">
+                <i class="bi bi-lock"></i>
+                <input :type="mostrarContrasena ? 'text' : 'password'" id="passwordInput" name="contrasena" placeholder="Su contraseña" required>
+                <button type="button" class="toggle-pass" :title="mostrarContrasena ? 'Ocultar' : 'Ver'"
+                        @click="mostrarContrasena = !mostrarContrasena">
+                  <i :class="mostrarContrasena ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
+                </button>
+              </div>
+            </div>
+
+            <button type="submit" class="btn-submit" :disabled="cargando">
+              <span v-if="cargando" class="spinner"></span>
+              <span>{{ cargando ? 'Verificando...' : 'Ingresar al sistema' }}</span>
+              <i class="bi bi-arrow-right" v-if="!cargando"></i>
+            </button>
+          </form>
+
+          <div class="orc">Acceso rápido de prueba</div>
+          <div class="demo-hint"><i class="bi bi-key"></i> Cuentas demo (contraseña: <b>password</b>)</div>
+          <div class="demo-btns">
+            <button class="demo-btn" @click="rellenar('admin')">Administrador<small>admin</small></button>
+            <button class="demo-btn" @click="rellenar('tutor1')">Docente<small>tutor1</small></button>
+            <button class="demo-btn" @click="rellenar('estudiante1')">Estudiante<small>estudiante1</small></button>
+          </div>
+
+          <div class="login-footer">
+            Universidad Privada Domingo Savio &bull; Tecnologías Web &copy; <?= date('Y') ?><br>
+            <a href="/">← Volver a la página principal</a>
+          </div>
         </div>
       </div>
-      <div class="feature-item">
-        <div class="feature-ico"><i class="bi bi-people"></i></div>
-        <div>
-          <div class="fw-bold small">Docentes especializados</div>
-          <div class="text-white-50 small">Tutores con perfil por especialidad y disponibilidad semanal.</div>
-        </div>
-      </div>
-      <div class="feature-item">
-        <div class="feature-ico"><i class="bi bi-star"></i></div>
-        <div>
-          <div class="fw-bold small">Retroalimentación continua</div>
-          <div class="text-white-50 small">Califica cada sesión y ayuda a mejorar la calidad del apoyo.</div>
-        </div>
-      </div>
-    </div>
+    </main>
   </div>
-</div>
 
-<!-- Columna derecha: formulario de acceso -->
-<div class="col-lg-6 login-wrap">
-  <div class="login-card">
-    <div class="text-center mb-4 d-lg-none">
-      <div class="brand-logo mx-auto mb-3" style="background:linear-gradient(135deg,#f59e0b,#f97316);"><i class="bi bi-mortarboard-fill"></i></div>
-      <h3 class="fw-black text-dark mb-1">Sistema de Tutorías</h3>
-      <p class="text-muted small">Universidad Privada Domingo Savio</p>
-    </div>
+  <script>
+    window.__LOGIN_STATS__ = {
+      usuarios: <?= (int)($stats['usuarios'] ?? 0) ?>,
+      materias: <?= (int)($stats['materias'] ?? 0) ?>,
+      tutores:  <?= (int)($stats['tutores'] ?? 0) ?>,
+    };
+  </script>
 
-    <div class="card border-0 rounded-4 shadow-lg" style="box-shadow: 0 20px 45px rgba(30,27,75,.15) !important;">
-      <div class="card-body p-4 p-md-5">
-        <h4 class="fw-bold text-dark mb-1">¡Bienvenido(a)! 👋</h4>
-        <p class="text-muted small mb-4">Ingresa con tu usuario o correo para acceder al portal.</p>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script>
+    const { createApp, ref, onMounted, reactive } = Vue;
 
-        <?php if (isset($_SESSION['login_error'])): ?>
-          <div class="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 rounded-3" role="alert" style="font-size: 0.9rem;">
-            <i class="bi bi-exclamation-triangle-fill fs-5 flex-shrink-0"></i>
-            <div><?= htmlspecialchars($_SESSION['login_error']) ?></div>
-          </div>
-          <?php unset($_SESSION['login_error']); ?>
-        <?php endif; ?>
+    createApp({
+      setup() {
+        const mostrarContrasena = ref(false);
+        const cargando = ref(false);
+        const stats = reactive(window.__LOGIN_STATS__ || { usuarios: 0, materias: 0, tutores: 0 });
 
-        <form action="../../controllers/login_procesar.php" method="POST" autocomplete="off">
-          <?= campoCsrf() ?>
-          <div class="form-floating mb-3">
-            <input type="text" class="form-control rounded-3" id="usuarioInput" name="usuario" placeholder="Usuario o Correo" required autofocus>
-            <label for="usuarioInput"><i class="bi bi-person me-1"></i>Usuario o Correo</label>
-          </div>
+        const rellenar = (usuario) => {
+          const u = document.getElementById('usuarioInput');
+          const p = document.getElementById('passwordInput');
+          if (u) { u.value = usuario; u.dispatchEvent(new Event('input', { bubbles: true })); }
+          if (p) p.value = 'password';
+          u && u.focus();
+        };
 
-          <div class="form-floating mb-4">
-            <input type="password" class="form-control rounded-3" id="passwordInput" name="contrasena" placeholder="Contraseña" required>
-            <label for="passwordInput"><i class="bi bi-lock me-1"></i>Contraseña</label>
-          </div>
+        // Botón deshabilitado mientras envía el formulario
+        onMounted(() => {
+          const form = document.querySelector('form');
+          if (form) {
+            form.addEventListener('submit', () => {
+              cargando.value = true;
+            });
+          }
+        });
 
-          <button type="submit" class="btn btn-login btn-primary w-100 py-3 rounded-3 d-flex align-items-center justify-content-center gap-2">
-            <span>Ingresar al Sistema</span>
-            <i class="bi bi-arrow-right"></i>
-          </button>
-        </form>
-
-        <div class="mt-4 p-3 demo-badge rounded-3">
-          <div class="small fw-bold text-indigo mb-2"><i class="bi bi-key me-1"></i>Cuentas de prueba (clave: password)</div>
-          <div class="d-flex flex-wrap gap-2 small text-muted">
-            <span class="badge badge-rol badge-admin">admin</span>
-            <span class="badge badge-rol badge-tutor">tutor1</span>
-            <span class="badge badge-rol badge-estudiante">estudiante1</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="text-center mt-4 small text-muted">
-      Universidad Privada Domingo Savio &bull; Tecnologías Web &copy; <?= date('Y') ?>
-    </div>
-  </div>
-</div>
-
+        return { mostrarContrasena, cargando, stats, rellenar };
+      },
+    }).mount('#app-login');
+  </script>
 </body>
 </html>
