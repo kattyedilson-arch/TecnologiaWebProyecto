@@ -10,10 +10,10 @@
 //     la materia elegida o que no están activos (usa data-materias
 //     y data-estado de cada <option>).
 //   - Selector de disponibilidad: al elegir el tutor se muestran
-//     los DÍAS en que atiende; al elegir un día se muestran sus
-//     horarios. Al tocar un horario se rellenan automáticamente la
-//     fecha (próximo día con ese nombre), hora_inicio y hora_fin
-//     (1 hora por defecto, tope al fin del bloque).
+//     los DÍAS en que atiende; al tocar un día la fecha se rellena
+//     sola con la próxima fecha válida (sigue siendo editable). Al
+//     tocar un horario se rellenan hora_inicio y hora_fin (1 hora
+//     por defecto, tope al fin del bloque).
 //   - Al elegir modalidad virtual, hace obligatorio y tipo URL
 //     el campo lugar_o_enlace.
 //   - Verifica que la hora de fin sea posterior a la de inicio.
@@ -301,12 +301,18 @@ $volverUrl = ($rolAux === 'estudiante') ? '../views/estudiante/panel.php' : 'tut
     actualizarInfoDia();
   }
 
-  // Al tocar un día
+  // Al tocar un día (la fecha se ajusta sola a la próxima fecha válida de ese día)
   listarDias.addEventListener('click', e => {
     const btn = e.target.closest('button[data-dia]');
     if (!btn) return;
     seleccionDia = btn.dataset.dia;
     seleccionBloque = null;
+    if (selFecha.value) {
+      const diaActual = diasSemana[diaSemanaDe(selFecha.value)];
+      if (diaActual !== seleccionDia) selFecha.value = siguienteFechaDeDia(seleccionDia);
+    } else {
+      selFecha.value = siguienteFechaDeDia(seleccionDia);
+    }
     renderDias();
   });
 

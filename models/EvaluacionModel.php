@@ -28,7 +28,8 @@ class EvaluacionModel
     {
         $sql = "INSERT INTO evaluaciones_tutoria (id_tutoria, calificacion, comentario)
                 VALUES (:id_tutoria, :calif, :coment)
-                ON DUPLICATE KEY UPDATE calificacion = VALUES(calificacion), comentario = VALUES(comentario)";
+                AS nuevo
+                ON DUPLICATE KEY UPDATE calificacion = nuevo.calificacion, comentario = nuevo.comentario";
         $stmt = $this->pdo->prepare($sql);
         return $stmt->execute([
             ':id_tutoria' => $id_tutoria,

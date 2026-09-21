@@ -66,7 +66,8 @@ class EstudianteModel
     {
         $sql = "INSERT INTO estudiantes (id_usuario, id_carrera, semestre, registro_universitario)
                 VALUES (:id_usuario, :id_carrera, :semestre, :ru)
-                ON DUPLICATE KEY UPDATE id_carrera = VALUES(id_carrera), semestre = VALUES(semestre), registro_universitario = VALUES(registro_universitario)";
+                AS nuevo
+                ON DUPLICATE KEY UPDATE id_carrera = nuevo.id_carrera, semestre = nuevo.semestre, registro_universitario = nuevo.registro_universitario";
         $stmt = $this->pdo->prepare($sql);
         return $stmt->execute([
             ':id_usuario' => $id_usuario,

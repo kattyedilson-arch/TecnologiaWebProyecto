@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS materias (
   id_materia INT AUTO_INCREMENT PRIMARY KEY,
   nombre_materia VARCHAR(150) NOT NULL,
   id_carrera INT,
-  UNIQUE KEY uq_materias_nombre (nombre_materia),
+  INDEX idx_materias_nombre (nombre_materia),
   CONSTRAINT fk_materias_carreras FOREIGN KEY (id_carrera) REFERENCES carreras(id_carrera) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -158,53 +158,63 @@ INSERT INTO roles (id_rol, nombre_rol) VALUES
 (1, 'administrador'), 
 (2, 'tutor'), 
 (3, 'estudiante')
-ON DUPLICATE KEY UPDATE nombre_rol = VALUES(nombre_rol);
+AS nuevo
+ON DUPLICATE KEY UPDATE nombre_rol = nuevo.nombre_rol;
 
 -- Carreras
 INSERT INTO carreras (id_carrera, nombre_carrera) VALUES 
 (1, 'Ingeniería de Sistemas')
-ON DUPLICATE KEY UPDATE nombre_carrera = VALUES(nombre_carrera);
+AS nuevo
+ON DUPLICATE KEY UPDATE nombre_carrera = nuevo.nombre_carrera;
 
 -- Materias
 INSERT INTO materias (id_materia, nombre_materia, id_carrera) VALUES
 (1, 'Base de Datos I', 1),
 (2, 'Programación I', 1),
 (3, 'Tecnología Web I', 1)
-ON DUPLICATE KEY UPDATE nombre_materia = VALUES(nombre_materia);
+AS nuevo
+ON DUPLICATE KEY UPDATE nombre_materia = nuevo.nombre_materia;
 
 -- Usuarios iniciales con contraseña: password (hash bcrypt real)
 -- 1. Administrador (admin / password)
 INSERT INTO usuarios (id_usuario, id_rol, nombre, apellido, correo, usuario, contrasena_hash, telefono, estado) VALUES
 (1, 1, 'Admin', 'Sistema', 'admin@tutorias.local', 'admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '70000001', 'activo')
-ON DUPLICATE KEY UPDATE usuario = VALUES(usuario);
+AS nuevo
+ON DUPLICATE KEY UPDATE usuario = nuevo.usuario;
 
 -- 2. Tutor de prueba (tutor1 / password)
 INSERT INTO usuarios (id_usuario, id_rol, nombre, apellido, correo, usuario, contrasena_hash, telefono, estado) VALUES
 (2, 2, 'Carlos', 'Docente', 'tutor@tutorias.local', 'tutor1', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '70000002', 'activo')
-ON DUPLICATE KEY UPDATE usuario = VALUES(usuario);
+AS nuevo
+ON DUPLICATE KEY UPDATE usuario = nuevo.usuario;
 
 INSERT INTO tutores (id_tutor, id_usuario, especialidad, biografia) VALUES
 (1, 2, 'Desarrollo Web y Bases de Datos', 'Docente tutor especializado en desarrollo backend y arquitecturas web.')
-ON DUPLICATE KEY UPDATE especialidad = VALUES(especialidad);
+AS nuevo
+ON DUPLICATE KEY UPDATE especialidad = nuevo.especialidad;
 
 -- Materias asignadas al tutor
 INSERT INTO tutor_materia (id_tutor, id_materia) VALUES
 (1, 1),
 (1, 3)
-ON DUPLICATE KEY UPDATE id_tutor = VALUES(id_tutor);
+AS nuevo
+ON DUPLICATE KEY UPDATE id_tutor = nuevo.id_tutor;
 
 -- Disponibilidad horaria del tutor
 INSERT INTO disponibilidad_tutor (id_disponibilidad, id_tutor, dia_semana, hora_inicio, hora_fin) VALUES
 (1, 1, 'Lunes', '14:00:00', '18:00:00'),
 (2, 1, 'Miercoles', '14:00:00', '18:00:00'),
 (3, 1, 'Viernes', '09:00:00', '12:00:00')
-ON DUPLICATE KEY UPDATE dia_semana = VALUES(dia_semana);
+AS nuevo
+ON DUPLICATE KEY UPDATE dia_semana = nuevo.dia_semana;
 
 -- 3. Estudiante de prueba (estudiante1 / password)
 INSERT INTO usuarios (id_usuario, id_rol, nombre, apellido, correo, usuario, contrasena_hash, telefono, estado) VALUES
 (3, 3, 'Maria', 'Estudiante', 'estudiante@tutorias.local', 'estudiante1', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '70000003', 'activo')
-ON DUPLICATE KEY UPDATE usuario = VALUES(usuario);
+AS nuevo
+ON DUPLICATE KEY UPDATE usuario = nuevo.usuario;
 
 INSERT INTO estudiantes (id_estudiante, id_usuario, id_carrera, semestre, registro_universitario) VALUES
 (1, 3, 1, 4, 'RU-2026-98765')
-ON DUPLICATE KEY UPDATE semestre = VALUES(semestre);
+AS nuevo
+ON DUPLICATE KEY UPDATE semestre = nuevo.semestre;
