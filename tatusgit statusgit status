@@ -1,0 +1,24 @@
+  G7                               [m ea5879a validacion de carreras y mejoras
+* [32mG8                               [m 578184a mejoras del fronted y validacion de materias mas mejoras en panel de estudiantes y tutor
+  main                             [m 7063946 [behind 13] Todo el desarrollo se realizó manteniendo de forma estricta el patrón MVC, con diseño moderno y responsivo en Bootstrap 5, validaciones en backend y datos en vivo desde MySQL.
+  [31mremotes/origin/G7                [m 1a7feb1 SE IMPLEMENTO EL LOGIN
+  [31mremotes/origin/Gabozin           [m 1a7feb1 SE IMPLEMENTO EL LOGIN
+  [31mremotes/origin/HEAD              [m -> origin/main
+  [31mremotes/origin/Rozdily-patch-1   [m 96291f8 cambio 1
+  [31mremotes/origin/gabriel           [m 1a7feb1 SE IMPLEMENTO EL LOGIN
+  [31mremotes/origin/grupo-5-Rama      [m 8df2262 Se implementó la configuración inicial del entorno de desarrollo con Docker Compose, incluyendo: - Servicio de base de datos MySQL con script de inicialización (init.sql). - Servicio phpMyAdmin para administración de la base de datos. - Servicio web con soporte PHP. - Ajustes en conexion.php para conexión mediante PDO usando variables de entorno. - Creación y modificación de archivos index.php, login_procesar.php, logout.php y verificar_sesion.php para manejo de sesiones y autenticación. - Inclusión de Dockerfile y .dockerignore para definir la imagen y excluir archivos innecesarios
+  [31mremotes/origin/grupo002          [m 8ac171e SCRIPT DE LA BASE DE DATOS ACTUALIZADO CON LAS TABALAS NECESARIAS PARA EL COMIENZO DE SU DESARROLLO DE LOS CRUDS, EJECUTEN ESO UNA VEZ Y DESPUES REVISEN LOS REGISTROS QUE SE CREARON JUNTAMENTE CON LAS TABLAS
+  [31mremotes/origin/grupo11           [m 8ac171e SCRIPT DE LA BASE DE DATOS ACTUALIZADO CON LAS TABALAS NECESARIAS PARA EL COMIENZO DE SU DESARROLLO DE LOS CRUDS, EJECUTEN ESO UNA VEZ Y DESPUES REVISEN LOS REGISTROS QUE SE CREARON JUNTAMENTE CON LAS TABLAS
+  [31mremotes/origin/grupo2            [m 8ac171e SCRIPT DE LA BASE DE DATOS ACTUALIZADO CON LAS TABALAS NECESARIAS PARA EL COMIENZO DE SU DESARROLLO DE LOS CRUDS, EJECUTEN ESO UNA VEZ Y DESPUES REVISEN LOS REGISTROS QUE SE CREARON JUNTAMENTE CON LAS TABLAS
+  [31mremotes/origin/grupo3            [m df9c8e4 commit inicial
+  [31mremotes/origin/grupo8            [m 8ac171e SCRIPT DE LA BASE DE DATOS ACTUALIZADO CON LAS TABALAS NECESARIAS PARA EL COMIENZO DE SU DESARROLLO DE LOS CRUDS, EJECUTEN ESO UNA VEZ Y DESPUES REVISEN LOS REGISTROS QUE SE CREARON JUNTAMENTE CON LAS TABLAS
+  [31mremotes/origin/grupo8-1          [m 7180353 borrar contraseña
+  [31mremotes/origin/jael9             [m 8ac171e SCRIPT DE LA BASE DE DATOS ACTUALIZADO CON LAS TABALAS NECESARIAS PARA EL COMIENZO DE SU DESARROLLO DE LOS CRUDS, EJECUTEN ESO UNA VEZ Y DESPUES REVISEN LOS REGISTROS QUE SE CREARON JUNTAMENTE CON LAS TABLAS
+  [31mremotes/origin/main              [m 05f6215 Se implementaron datos de prueba en la base de datos, correcion en las vistas del login, correcionen algunos modelos de de materias se mejoro el buscador
+  [31mremotes/origin/osmar_tapia_1     [m 983dbcd ESTOY UTILIZANDO BOOPSTRAP PARA EL FRONTEND YA QUE NO ES PESADO Y NO NECESITA INSTALAR PRACTICMANETE NADA, ADEMAS ESTOY IMPLEMENTANDO LOS MODULOS DE CARRERAS MATERIAS Y DANDOLE DISEÑOS A LAS VISTAS CON BSTRP, TODO ESTA FUNCIONANDO CORRECTAMENTE Y TODAS LAS VISTAS DE IGUAL MANERA.
+  [31mremotes/origin/osmartapia        [m 983dbcd ESTOY UTILIZANDO BOOPSTRAP PARA EL FRONTEND YA QUE NO ES PESADO Y NO NECESITA INSTALAR PRACTICMANETE NADA, ADEMAS ESTOY IMPLEMENTANDO LOS MODULOS DE CARRERAS MATERIAS Y DANDOLE DISEÑOS A LAS VISTAS CON BSTRP, TODO ESTA FUNCIONANDO CORRECTAMENTE Y TODAS LAS VISTAS DE IGUAL MANERA.
+  [31mremotes/personal/G7              [m ea5879a validacion de carreras y mejoras
+  [31mremotes/personal/G8              [m 11547c7 Menu principal por roles y modulo tutor-materia
+  [31mremotes/personal/HEAD            [m -> personal/G7
+  [31mremotes/personal/ai              [m 11547c7 Menu principal por roles y modulo tutor-materia
+  [31mremotes/personal/cambio-escritura[m c0be66b Cambios de escritura y validación en el sistema de tutorías
