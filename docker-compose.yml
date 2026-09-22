@@ -1,0 +1,47 @@
+services:
+  web:
+    build: .
+    container_name: tutorias_web_v2
+    restart: always
+    ports:
+      - "8001:80"
+    volumes:
+      - ./:/var/www/html
+    environment:
+      - DB_HOST=db
+      - DB_NAME=tutorias_db
+      - DB_USER=tutorias_user
+      - DB_PASS=12345
+    depends_on:
+      - db
+
+  db:
+    image: mysql:8.0
+    container_name: tutorias_db_v2
+    restart: always
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: tutorias_db
+      MYSQL_USER: tutorias_user
+      MYSQL_PASSWORD: 12345
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: tutorias_phpmyadmin_v2
+    restart: always
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: root_password
+    depends_on:
+      - db
+
+volumes:
+  mysql_data:
