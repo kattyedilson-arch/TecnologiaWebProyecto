@@ -232,14 +232,16 @@ class TutoriaModel
 
     /**
      * Verifica que el rango solicitado esté DENTRO de un bloque horario
-     * declarado por el tutor en 'disponibilidad_tutor' (mismo día de semana).
+     * declarado por el tutor en 'disponibilidad_tutor' (mismo día de semana)
+     * y que ese bloque corresponda a la materia solicitada.
      * @param int $id_tutor Identificador del tutor
+     * @param int $id_materia Materia que el estudiante quiere reforzar
      * @param string $fecha Fecha de la nueva sesión (Y-m-d)
      * @param string $hora_inicio Hora inicial del nuevo rango
      * @param string $hora_fin Hora final del nuevo rango
      * @return bool True si existe un bloque que cubre todo el rango
      */
-    public function disponibilidadCubreHorario($id_tutor, $fecha, $hora_inicio, $hora_fin)
+    public function disponibilidadCubreHorario($id_tutor, $id_materia, $fecha, $hora_inicio, $hora_fin)
     {
         // Día de la semana en español (igual que el ENUM de disponibilidad_tutor)
         $diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
@@ -248,15 +250,17 @@ class TutoriaModel
         $sql = "SELECT COUNT(*) AS total
                 FROM disponibilidad_tutor
                 WHERE id_tutor = :id_tutor
+                  AND id_materia = :id_materia
                   AND dia_semana = :dia
                   AND hora_inicio <= :inicio
                   AND hora_fin >= :fin";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
-            ':id_tutor' => $id_tutor,
-            ':dia'      => $dia,
-            ':inicio'   => $hora_inicio,
-            ':fin'      => $hora_fin
+            ':id_tutor'   => $id_tutor,
+            ':id_materia' => $id_materia,
+            ':dia'        => $dia,
+            ':inicio'     => $hora_inicio,
+            ':fin'        => $hora_fin
         ]);
         return (int)$stmt->fetch()['total'] > 0;
     }

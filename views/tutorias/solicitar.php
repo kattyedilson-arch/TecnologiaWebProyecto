@@ -10,11 +10,13 @@
 //     la materia elegida o que no están activos (usa data-materias
 //     y data-estado de cada <option>).
 //   - Selector de disponibilidad: al elegir el tutor se muestran
-//     los DÍAS en que atiende; al tocar un día la fecha se rellena
-//     sola con la próxima fecha válida. Al tocar un horario se
-//     rellenan fecha, hora_inicio y hora_fin con el rango completo
-//     del bloque. La fecha y las horas quedan fijadas por la
-//     disponibilidad declarada (no son editables).
+//     los DÍAS en que atiende ESA materia (solo bloques del tutor
+//     asociados a la materia elegida); al tocar un día el select de
+//     FECHA se llena con las próximas 5 ocurrencias de ese día de la
+//     semana (ej: los martes próximos). Al tocar un horario se rellenan
+//     hora_inicio y hora_fin con el rango del bloque. Si el bloque de
+//     hoy ya comenzó, la fecha ofrecida salta a la próxima semana. La
+//     fecha se elige del select (no es escribible).
 //   - Al elegir modalidad virtual, hace obligatorio y tipo URL
 //     el campo lugar_o_enlace.
 //   - Verifica que la hora de fin sea posterior a la de inicio.
@@ -88,7 +90,7 @@ $volverUrl = ($rolAux === 'estudiante') ? '../views/estudiante/panel.php' : 'tut
                 <option value="<?= $t['id_tutor'] ?>"
                         data-materias="<?= implode(' ', array_map('intval', $t['materias_ids'])) ?>"
                         data-estado="<?= htmlspecialchars($t['estado']) ?>"
-                        data-disponibilidad="<?= htmlspecialchars(implode(',', array_map(fn($d) => $d['dia_semana'] . '|' . substr($d['hora_inicio'], 0, 5) . '|' . substr($d['hora_fin'], 0, 5), $t['disponibilidad'] ?? [])), ENT_QUOTES) ?>"
+                        data-disponibilidad="<?= htmlspecialchars(implode(',', array_map(fn($d) => $d['dia_semana'] . '|' . substr($d['hora_inicio'], 0, 5) . '|' . substr($d['hora_fin'], 0, 5) . '|' . (int)($d['id_materia'] ?? 0), $t['disponibilidad'] ?? [])), ENT_QUOTES) ?>"
                         <?= (isset($_POST['id_tutor']) && $_POST['id_tutor'] == $t['id_tutor']) ? 'selected' : '' ?>>
                   Prof. <?= htmlspecialchars($t['nombre'] . ' ' . $t['apellido']) ?> <?= !empty($t['especialidad']) ? '— ' . htmlspecialchars($t['especialidad']) : '' ?>
                 </option>
@@ -112,7 +114,12 @@ $volverUrl = ($rolAux === 'estudiante') ? '../views/estudiante/panel.php' : 'tut
           <!-- Fecha -->
           <div class="col-md-4">
             <label class="form-label fw-semibold text-secondary small text-uppercase">Fecha de la Sesión *</label>
-            <input type="date" name="fecha" class="form-control rounded-3 py-2 bg-light" min="<?= date('Y-m-d') ?>" value="<?= htmlspecialchars($_POST['fecha'] ?? date('Y-m-d')) ?>" readonly title="La fecha se fija según la disponibilidad del docente." required>
+            <select name="fecha" id="selFecha" class="form-select rounded-3 py-2 bg-light" required
+                    title="Elige entre las próximas fechas en que el docente atiende ese día.">
+              <option value="" disabled selected>Primero elige día y horario...</option>
+            </select>
+            <input type="hidden" id="postFecha" value="<?= htmlspecialchars($_POST['fecha'] ?? '') ?>">
+            <div class="form-text">Solo se ofrecen las próximas 5 fechas que caen en el día elegido.</div>
             <div class="invalid-feedback">Elige una fecha (no puede ser en el pasado).</div>
           </div>
 
@@ -199,7 +206,7 @@ $volverUrl = ($rolAux === 'estudiante') ? '../views/estudiante/panel.php' : 'tut
       : '<i class="bi bi-info-circle me-1"></i>' + visibles + ' tutor(es) activo(s) disponible(s) para esta materia.';
   }
 
-  selMateria.addEventListener('change', filtrarTutores);
+  selMateria.addEventListener('change', onCambioMateria);
   filtrarTutores();
 
   // ---- Selector de disponibilidad: días y horarios del tutor ----
@@ -216,14 +223,35 @@ $volverUrl = ($rolAux === 'estudiante') ? '../views/estudiante/panel.php' : 'tut
   let seleccionDia    = null; // día de atención elegido por el estudiante (ej: 'Lunes')
   let seleccionBloque = null; // bloque elegido: { inicio, fin }
 
-  // Mapa: id_tutor -> [{dia, inicio, fin}]
+  // Mapa: id_tutor -> [{dia, inicio, fin, materia}]
   const bloquesPorTutor = {};
   Array.from(selTutor.options).forEach(opt => {
     if (opt.value === '') return;
     bloquesPorTutor[opt.value] = (opt.dataset.disponibilidad || '')
       .split(',').filter(Boolean)
-      .map(b => { const [dia, inicio, fin] = b.split('|'); return { dia, inicio, fin }; });
+      .map(b => { const [dia, inicio, fin, materia] = b.split('|'); return { dia, inicio, fin, materia }; });
   });
+
+  // Solo se ofrecen los bloques del tutor que imparten LA MATERIA elegida
+  function bloquesDeTutor() {
+    const materiaId = selMateria.value;
+    return (bloquesPorTutor[selTutor.value] || []).filter(b => b.materia === materiaId);
+  }
+
+  function limpiarSeleccionHorario() {
+    seleccionDia = null;
+    seleccionBloque = null;
+    ini.value = '';
+    fin.value = '';
+    selFecha.innerHTML = '<option value="" disabled selected>Primero elige día y horario...</option>';
+  }
+
+  // Al cambiar la materia: se limpia el horario elegido y se filtran tutores/bloques
+  function onCambioMateria() {
+    limpiarSeleccionHorario();
+    filtrarTutores();
+    renderDias();
+  }
 
   function diaSemanaDe(fechaStr) {
     if (!fechaStr) return null;
@@ -231,17 +259,61 @@ $volverUrl = ($rolAux === 'estudiante') ? '../views/estudiante/panel.php' : 'tut
     return new Date(+p[0], +p[1] - 1, +p[2]).getDay();
   }
 
-  // Devuelve la próxima fecha (YYYY-MM-DD) que cae en el día 'dia'
-  function siguienteFechaDeDia(dia) {
+  // Hora actual en formato HH:MM (para comparar con los bloques)
+  function horaActual() {
+    const h = new Date();
+    return String(h.getHours()).padStart(2, '0') + ':' + String(h.getMinutes()).padStart(2, '0');
+  }
+
+  // Devuelve la próxima fecha (YYYY-MM-DD) que cae en el día 'dia'.
+  // Si ese día es HOY pero la hora de inicio de su bloque ya pasó,
+  // se avanza a la próxima semana (7 días después).
+  function siguienteFechaDeDia(dia, horaInicio) {
     const obj = diasSemana.indexOf(dia);          // Lunes -> 1 ... Sabado -> 6
     const hoy = new Date();
     let diff = (obj + 7 - hoy.getDay()) % 7;      // 0 = es hoy mismo
+    if (diff === 0 && horaInicio && horaInicio <= horaActual()) diff = 7;
     const dt = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + diff);
     return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
   }
 
-  function bloquesDeTutor() {
-    return bloquesPorTutor[selTutor.value] || [];
+  function hoyISO() {
+    const h = new Date();
+    return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0');
+  }
+
+  function sumarDias(iso, n) {
+    const p = iso.split('-');
+    const dt = new Date(+p[0], +p[1] - 1, +p[2] + n);
+    return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+  }
+
+  // Ej: '2026-09-29' -> '29/09/2026'
+  function formatearFechaCorta(iso) {
+    const p = iso.split('-');
+    return p[2] + '/' + p[1] + '/' + p[0];
+  }
+
+  // Última hora de inicio entre los bloques del tutor que caen ese día
+  function ultimaHoraDelDia(dia) {
+    return bloquesDeTutor().filter(b => b.dia === dia).reduce((max, b) => (b.inicio > max ? b.inicio : max), '');
+  }
+
+  // El select de fechas muestra las siguientes 5 ocurrencias del día elegido.
+  // La primera se calcula con horaInicio para no ofrecer hoy si su bloque ya pasó.
+  function poblarSelectFechas(dia, horaRef, fechaPreseleccionada) {
+    const fechas = [];
+    let iso = siguienteFechaDeDia(dia, horaRef || null);
+    for (let i = 0; i < 5; i++) { fechas.push(iso); iso = sumarDias(iso, 7); }
+
+    selFecha.innerHTML = fechas.map(f =>
+      '<option value="' + f + '">' + diasSemana[diaSemanaDe(f)] + ' ' + formatearFechaCorta(f) + '</option>'
+    ).join('');
+
+    if (fechaPreseleccionada && fechas.includes(fechaPreseleccionada)) {
+      selFecha.value = fechaPreseleccionada;
+    }
+    // si no hay preselección, queda marcada la primera (próxima ocurrencia válida)
   }
 
   // Paso 1: mostrar los días (únicos) en que atiende el tutor elegido
@@ -255,7 +327,7 @@ $volverUrl = ($rolAux === 'estudiante') ? '../views/estudiante/panel.php' : 'tut
     const tutoriaDias = [...new Set(bloquesDeTutor().map(b => b.dia))];
 
     if (tutoriaDias.length === 0) {
-      listarDias.innerHTML = '<span class="badge rounded-pill px-3 py-2 border bg-light text-warning">Sin horarios declarados aún</span>';
+      listarDias.innerHTML = '<span class="badge rounded-pill px-3 py-2 border bg-light text-warning">Sin horarios para esta materia aún</span>';
       tituloHoras.classList.add('d-none');
       listarHoras.innerHTML = '';
       seleccionDia = null;
@@ -296,7 +368,8 @@ $volverUrl = ($rolAux === 'estudiante') ? '../views/estudiante/panel.php' : 'tut
     actualizarInfoDia();
   }
 
-  // Al tocar un día (la fecha se ajusta sola a la próxima fecha válida de ese día)
+  // Al tocar un día: se ofrecen las próximas 5 fechas que caen ese día
+  // (si el día de hoy ya no tiene bloques por comenzar, se salta a la próxima semana).
   listarDias.addEventListener('click', e => {
     const btn = e.target.closest('button[data-dia]');
     if (!btn) return;
@@ -304,27 +377,22 @@ $volverUrl = ($rolAux === 'estudiante') ? '../views/estudiante/panel.php' : 'tut
     seleccionBloque = null;
     ini.value = '';
     fin.value = '';
-    if (selFecha.value) {
-      const diaActual = diasSemana[diaSemanaDe(selFecha.value)];
-      if (diaActual !== seleccionDia) selFecha.value = siguienteFechaDeDia(seleccionDia);
-    } else {
-      selFecha.value = siguienteFechaDeDia(seleccionDia);
-    }
+    poblarSelectFechas(seleccionDia, ultimaHoraDelDia(seleccionDia));
     renderDias();
   });
 
-  // Al tocar un horario se rellenan solos: fecha, hora_inicio y hora_fin
+  // Al tocar un horario se rellenan solos: hora_inicio, hora_fin y (si falta) fecha.
+  // Si el bloque de hoy ya comenzó, la fecha salta a la siguiente del listado.
   listarHoras.addEventListener('click', e => {
     const btn = e.target.closest('button[data-inicio]');
     if (!btn) return;
     const bloque = { inicio: btn.dataset.inicio, fin: btn.dataset.fin };
     seleccionBloque = bloque;
 
-    if (selFecha.value) {
-      const diaActual = diasSemana[diaSemanaDe(selFecha.value)];
-      if (diaActual !== seleccionDia) selFecha.value = siguienteFechaDeDia(seleccionDia);
-    } else {
-      selFecha.value = siguienteFechaDeDia(seleccionDia);
+    if (!selFecha.value) {
+      poblarSelectFechas(seleccionDia, ultimaHoraDelDia(seleccionDia));
+    } else if (selFecha.value === hoyISO() && bloque.inicio <= horaActual()) {
+      selFecha.selectedIndex = Math.min(selFecha.selectedIndex + 1, selFecha.options.length - 1);
     }
 
     ini.value = bloque.inicio;
@@ -356,18 +424,17 @@ $volverUrl = ($rolAux === 'estudiante') ? '../views/estudiante/panel.php' : 'tut
   }
 
   selTutor.addEventListener('change', () => {
-    seleccionDia = null;
-    seleccionBloque = null;
-    ini.value = '';
-    fin.value = '';
+    limpiarSeleccionHorario();
     renderDias();
   });
   selFecha.addEventListener('change', actualizarInfoDia);
 
-  // Al cargar (POST con errores) se restaura lo ya elegido
+  // Al cargar (POST con errores) se restaura lo ya elegido,
+  // poblando el select de fechas y ajustando la fecha al próximo día
+  // si el bloque del día de hoy ya pasó
   if (selTutor.value) {
-    const fecha = selFecha.value;
-    const fechaDia = fecha ? diasSemana[diaSemanaDe(fecha)] : null;
+    const fechaPost = document.getElementById('postFecha').value || selFecha.value;
+    const fechaDia = fechaPost ? diasSemana[diaSemanaDe(fechaPost)] : null;
     const diasDisponibles = [...new Set(bloquesDeTutor().map(b => b.dia))];
     if (fechaDia && diasDisponibles.includes(fechaDia)) {
       seleccionDia = fechaDia;
@@ -376,6 +443,10 @@ $volverUrl = ($rolAux === 'estudiante') ? '../views/estudiante/panel.php' : 'tut
         ? bloques.find(b => ini.value >= b.inicio && ini.value < b.fin)
         : null;
       seleccionBloque = bloqueInicial || bloques[0] || null;
+      poblarSelectFechas(seleccionDia, ultimaHoraDelDia(seleccionDia), fechaPost);
+      if (seleccionBloque && selFecha.value === hoyISO() && seleccionBloque.inicio <= horaActual()) {
+        selFecha.selectedIndex = Math.min(selFecha.selectedIndex + 1, selFecha.options.length - 1);
+      }
     }
     renderDias();
   }

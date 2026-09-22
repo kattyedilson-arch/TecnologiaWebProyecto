@@ -72,21 +72,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $dia = $_POST['dia_semana'] ?? '';
         $inicio = $_POST['hora_inicio'] ?? '';
         $fin = $_POST['hora_fin'] ?? '';
+        $idMateria = (int)($_POST['id_materia'] ?? 0);
+
+        // Materias que el tutor realmente imparte (solo esas pueden usarse en un bloque)
+        $materiasTutor = $tutorModel->obtenerMaterias($idTutor);
+        $idsMateriasTutor = array_column($materiasTutor, 'id_materia');
 
         // Validaciones del bloque horario
-        if (empty($dia) || empty($inicio) || empty($fin)) {
-            $errores[] = "Todos los campos de horario son obligatorios.";
+        if (empty($dia) || empty($inicio) || empty($fin) || empty($idMateria)) {
+            $errores[] = "Todos los campos de horario (día, hora y materia) son obligatorios.";
         } elseif (!in_array($dia, $diasValidos, true)) {
             $errores[] = "El día seleccionado no es válido.";
         } elseif (!preg_match('/^(2[0-3]|[01][0-9]):[0-5][0-9]$/', $inicio) || !preg_match('/^(2[0-3]|[01][0-9]):[0-5][0-9]$/', $fin)) {
             $errores[] = "El formato de las horas no es válido (usa HH:MM con horas entre 00 y 23).";
         } elseif ($inicio >= $fin) {
             $errores[] = "La hora de fin debe ser mayor a la hora de inicio.";
+        } elseif (!in_array($idMateria, $idsMateriasTutor, true)) {
+            $errores[] = "Debes elegir una de las materias que impartes para este bloque.";
         } elseif ($tutorModel->existeConflictoDisponibilidad($idTutor, $dia, $inicio, $fin)) {
             // Se impide que dos bloques del mismo día se solapen
             $errores[] = "Ya existe un bloque horario que se solapa con el que intentas agregar.";
         } else {
-            $tutorModel->agregarDisponibilidad($idTutor, $dia, $inicio, $fin);
+            $tutorModel->agregarDisponibilidad($idTutor, $dia, $inicio, $fin, $idMateria);
             setMensaje('success', 'Bloque horario agregado correctamente.');
             redirigir($rolSesion === 'tutor' ? 'tutores_disponibilidad.php' : 'tutores_disponibilidad.php?id=' . $idTutor);
         }

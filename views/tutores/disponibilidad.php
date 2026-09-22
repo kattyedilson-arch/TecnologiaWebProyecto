@@ -5,14 +5,14 @@
 // Panel de configuración del docente tutor, con tres bloques:
 //   1) Horarios: lista los bloques semanales existentes (con
 //      opción de eliminarlos) y formulario para agregar uno
-//      nuevo (día + hora inicio/fin). Formulario accion=agregar_horario.
+//      nuevo (materia + día + hora inicio/fin). Formulario accion=agregar_horario.
 //   2) Materias: checkboxes de todas las materias, marcando las
 //      ya asignadas. Formulario accion=guardar_materias.
 //   3) Perfil profesional: especialidad y biografía.
 //      Formulario accion=actualizar_perfil.
 // Variables del controlador (controllers/tutores_disponibilidad.php):
-//   $tutor, $idTutor, $disponibilidades, $todasMaterias,
-//   $idsMateriasAsignadas, $errores
+//   $tutor, $idTutor, $disponibilidades, $materiasAsignadas,
+//   $todasMaterias, $idsMateriasAsignadas, $errores
 // =========================================================
 require_once __DIR__ . '/../../includes/verificar_sesion.php';
 requerirRol('administrador', 'tutor');
@@ -75,7 +75,10 @@ $volverUrl = ($rolAux === 'tutor') ? '../views/tutor/panel.php' : 'tutores_lista
               <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
                 <div class="d-flex align-items-center gap-2">
                   <span class="badge bg-indigo text-indigo px-2 py-1"><?= htmlspecialchars($d['dia_semana']) ?></span>
-                  <span class="fw-semibold text-dark"><i class="bi bi-clock me-1 text-muted"></i><?= substr($d['hora_inicio'], 0, 5) ?> - <?= substr($d['hora_fin'], 0, 5) ?></span>
+                  <div>
+                    <span class="fw-semibold text-dark"><i class="bi bi-clock me-1 text-muted"></i><?= substr($d['hora_inicio'], 0, 5) ?> - <?= substr($d['hora_fin'], 0, 5) ?></span>
+                    <div class="small text-muted"><i class="bi bi-book me-1"></i><?= htmlspecialchars($d['nombre_materia'] ?? 'Materia no asignada') ?></div>
+                  </div>
                 </div>
                 <a href="tutores_disponibilidad.php?id=<?= $idTutor ?>&eliminar_horario=<?= $d['id_disponibilidad'] ?>&token=<?= tokenCsrfUrl() ?>"
                    class="btn btn-outline-danger btn-sm btn-icon" title="Eliminar">
@@ -99,6 +102,18 @@ $volverUrl = ($rolAux === 'tutor') ? '../views/tutor/panel.php' : 'tutores_lista
           <?= campoCsrf() ?>
           <input type="hidden" name="accion" value="agregar_horario">
           <div class="col-12">
+            <label class="small text-muted">Materia que impartirá</label>
+            <select name="id_materia" class="form-select form-select-sm" required <?= empty($materiasAsignadas) ? 'disabled' : '' ?>>
+              <option value="" disabled selected>Selecciona la materia de este bloque...</option>
+              <?php foreach ($materiasAsignadas as $mat): ?>
+                <option value="<?= $mat['id_materia'] ?>"><?= htmlspecialchars($mat['nombre_materia']) ?></option>
+              <?php endforeach; ?>
+            </select>
+            <?php if (empty($materiasAsignadas)): ?>
+              <div class="form-text text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Primero asigna las materias que impartes (panel de la derecha) para poder agregar horarios.</div>
+            <?php endif; ?>
+          </div>
+          <div class="col-12">
             <select name="dia_semana" class="form-select form-select-sm" required>
               <option value="" disabled selected>Selecciona día de la semana...</option>
               <?php foreach (['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'] as $dia): ?>
@@ -115,7 +130,7 @@ $volverUrl = ($rolAux === 'tutor') ? '../views/tutor/panel.php' : 'tutores_lista
             <input type="time" name="hora_fin" class="form-control form-control-sm" required>
           </div>
           <div class="col-12 mt-2">
-            <button type="submit" class="btn btn-primary btn-sm w-100">
+            <button type="submit" class="btn btn-primary btn-sm w-100" <?= empty($materiasAsignadas) ? 'disabled' : '' ?>>
               <i class="bi bi-plus-lg me-1"></i> Agregar Horario
             </button>
           </div>

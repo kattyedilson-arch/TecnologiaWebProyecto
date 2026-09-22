@@ -12,17 +12,17 @@ del mensaje flash).
 
 <?php if (isset($_SESSION['id_usuario'])): ?>
     </div><!-- /.app-content -->
-  </main><!-- /.app-main -->
 
-  <footer class="py-3" style="border-top:1px solid #e6eaf2; background:#fff;">
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 px-4 text-muted" style="font-size:.82rem;">
-      <div>
-        <i class="bi bi-mortarboard-fill text-primary me-1"></i>
-        <strong>Sistema Web de Apoyo Académico para Tutorías</strong> &bull; &copy; <?= date('Y') ?> UPDS
+    <footer class="py-3 flex-shrink-0" style="border-top:1px solid #e6eaf2; background:#fff;">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 px-4 text-muted" style="font-size:.82rem;">
+        <div>
+          <i class="bi bi-mortarboard-fill text-primary me-1"></i>
+          <strong>Sistema Web de Apoyo Académico para Tutorías</strong> &bull; &copy; <?= date('Y') ?> UPDS
+        </div>
+        <div class="small">Materia de Tecnologías Web &bull; <i class="bi bi-shield-check me-1"></i>Hecho con PHP + Vue 3</div>
       </div>
-      <div class="small">Materia de Tecnologías Web &bull; <i class="bi bi-shield-check me-1"></i>Hecho con PHP + Vue 3</div>
-    </div>
-  </footer>
+    </footer>
+  </main><!-- /.app-main -->
 <?php else: ?>
   </main>
 <?php endif; ?>

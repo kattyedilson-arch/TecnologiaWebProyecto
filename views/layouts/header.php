@@ -272,6 +272,7 @@ $act = basename($_SERVER['PHP_SELF']);
     <?php elseif ($rolSesion === 'tutor'): ?>
       <a class="<?= strpos($act, 'tutor/panel') !== false ? 'active' : '' ?>" href="/views/tutor/panel.php"><i class="bi bi-speedometer2"></i><span>Mi Panel</span></a>
       <a class="<?= strpos($act, 'disponibilidad') !== false ? 'active' : '' ?>" href="/controllers/tutores_disponibilidad.php"><i class="bi bi-clock-history"></i><span>Horarios y Materias</span></a>
+      <a class="<?= strpos($act, 'mis_estudiantes') !== false ? 'active' : '' ?>" href="/views/tutor/mis_estudiantes.php"><i class="bi bi-people-fill"></i><span>Mis Estudiantes</span></a>
       <a class="<?= strpos($act, 'perfil') !== false ? 'active' : '' ?>" href="/controllers/perfil.php"><i class="bi bi-person-gear"></i><span>Mi Perfil</span></a>
     <?php elseif ($rolSesion === 'estudiante'): ?>
       <a class="<?= strpos($act, 'estudiante/panel') !== false ? 'active' : '' ?>" href="/views/estudiante/panel.php"><i class="bi bi-speedometer2"></i><span>Mi Panel</span></a>
@@ -281,7 +282,6 @@ $act = basename($_SERVER['PHP_SELF']);
   </nav>
 
   <div class="sidebar-foot">
-    <a href="/"><i class="bi bi-globe2"></i><span>Ver sitio público</span></a>
     <a href="/controllers/logout.php" style="color:#fca5a5;"><i class="bi bi-box-arrow-right"></i><span>Cerrar Sesión</span></a>
   </div>
 </aside>

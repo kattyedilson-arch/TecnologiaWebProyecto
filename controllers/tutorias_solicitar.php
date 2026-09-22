@@ -148,7 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // 11. La sesión debe estar dentro del horario declarado por el tutor
     if (empty($errores) && !empty($datos['id_tutor']) && !empty($datos['fecha'])) {
-        if (!$tutoriaModel->disponibilidadCubreHorario($datos['id_tutor'], $datos['fecha'], $datos['hora_inicio'], $datos['hora_fin'])) {
+        if (!$tutoriaModel->disponibilidadCubreHorario($datos['id_tutor'], $datos['id_materia'], $datos['fecha'], $datos['hora_inicio'], $datos['hora_fin'])) {
             $errores[] = "El docente tutor no tiene disponibilidad en esa fecha y horario. Revisa sus horarios declarados.";
         }
     }

@@ -189,35 +189,43 @@ class TutorModel
 
     /**
      * Bloques horarios semanales de disponibilidad del tutor, en orden de día/hora.
+     * Cada bloque devuelve también la materia que se impartirá en ese rango.
      * @param int $id_tutor Identificador del tutor
-     * @return array Horarios [dia_semana, hora_inicio, hora_fin, ...]
+     * @return array Horarios [id_materia, nombre_materia, dia_semana, hora_inicio, hora_fin, ...]
      */
     public function obtenerDisponibilidad($id_tutor)
     {
-        $sql = "SELECT * FROM disponibilidad_tutor WHERE id_tutor = :id_tutor ORDER BY 
-                FIELD(dia_semana, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'), hora_inicio ASC";
+        $sql = "SELECT dt.*, m.nombre_materia
+                FROM disponibilidad_tutor dt
+                INNER JOIN materias m ON dt.id_materia = m.id_materia
+                WHERE dt.id_tutor = :id_tutor
+                ORDER BY 
+                FIELD(dt.dia_semana, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'), dt.hora_inicio ASC";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([':id_tutor' => $id_tutor]);
         return $stmt->fetchAll();
     }
 
     /**
-     * Agrega un nuevo bloque de disponibilidad para el tutor.
+     * Agrega un nuevo bloque de disponibilidad para el tutor, indicando
+     * la materia que impartirá en ese horario.
      * @param int $id_tutor Identificador del tutor
      * @param string $dia_semana Día de la semana
      * @param string $hora_inicio Hora de inicio (HH:MM)
      * @param string $hora_fin Hora de fin (HH:MM)
+     * @param int $id_materia Materia que se impartirá en el bloque
      * @return bool True si la inserción fue exitosa
      */
-    public function agregarDisponibilidad($id_tutor, $dia_semana, $hora_inicio, $hora_fin)
+    public function agregarDisponibilidad($id_tutor, $dia_semana, $hora_inicio, $hora_fin, $id_materia)
     {
-        $stmt = $this->pdo->prepare("INSERT INTO disponibilidad_tutor (id_tutor, dia_semana, hora_inicio, hora_fin) 
-                                     VALUES (:id_tutor, :dia, :inicio, :fin)");
+        $stmt = $this->pdo->prepare("INSERT INTO disponibilidad_tutor (id_tutor, id_materia, dia_semana, hora_inicio, hora_fin) 
+                                     VALUES (:id_tutor, :id_materia, :dia, :inicio, :fin)");
         return $stmt->execute([
-            ':id_tutor' => $id_tutor,
-            ':dia'      => $dia_semana,
-            ':inicio'   => $hora_inicio,
-            ':fin'      => $hora_fin
+            ':id_tutor'   => $id_tutor,
+            ':id_materia' => $id_materia,
+            ':dia'        => $dia_semana,
+            ':inicio'     => $hora_inicio,
+            ':fin'        => $hora_fin
         ]);
     }
 
