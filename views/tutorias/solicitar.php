@@ -2,29 +2,43 @@
 // =========================================================
 // VISTA: SOLICITAR TUTORÍA (views/tutorias/solicitar.php)
 // ---------------------------------------------------------
-// Formulario que el estudiante completa para agendar una
-// sesión: materia, docente tutor, fecha, horas, modalidad y
-// lugar/enlace, más observaciones.
-// JavaScript incluido:
-//   - filtrarTutores(): deshabilita los tutores que no imparten
-//     la materia elegida o que no están activos (usa data-materias
-//     y data-estado de cada <option>).
-//   - Selector de disponibilidad: al elegir el tutor se muestran
-//     los DÍAS en que atiende; al tocar un día la fecha se rellena
-//     sola con la próxima fecha válida (sigue siendo editable). Al
-//     tocar un horario se rellenan hora_inicio y hora_fin (1 hora
-//     por defecto, tope al fin del bloque).
-//   - Al elegir modalidad virtual, hace obligatorio y tipo URL
-//     el campo lugar_o_enlace.
-//   - Verifica que la hora de fin sea posterior a la de inicio.
-// Variables del controlador (controllers/tutorias_solicitar.php):
-//   $materias, $tutores (con materias_ids y estado), $errores
+// Página DEDICADA al estudiante para agendar una tutoría a
+// partir de los horarios PREDEFINIDOS por el administrador.
+// El estudiante NO modifica aulas, días libres ni modalidad:
+//  1. Materia académica (de su carrera).
+//  2. Tipo de tutoría (Pregrado, Posgrado, Invierno, Verano).
+//  3. Horario / Turno (Mañana, Mediodía, Tarde, Noche) — los
+//     cuatro turnos fijos SIEMPRE se muestran; se deshabilitan
+//     los que aún no tienen horario publicado+asignado.
+//  4. Horario preestablecido: oferta (turno+tutor+modalidad+aula)
+//     publicada por el admin y asignada a un docente.
+//     La fecha de la sesión se asigna automáticamente (próximo día libre del turno).
+// Variables del controlador:
+//   $materias, $turnos, $ofertasDisponibles, $errores, $carreraEstudiante
 // =========================================================
 require_once __DIR__ . '/../../includes/verificar_sesion.php';
-$tituloPagina = 'Solicitar Tutoría Académica - UPDS';
+$tituloPagina = 'Materias Disponibles - UPDS';
 include __DIR__ . '/../layouts/header.php';
 $rolAux = $_SESSION['rol'] ?? 'estudiante';
 $volverUrl = ($rolAux === 'estudiante') ? '../views/estudiante/panel.php' : 'tutorias_listar.php';
+
+// Helper: etiqueta y color de la modalidad
+function modalidadBadge($modalidad) {
+    if (($modalidad ?? 'presencial') === 'virtual') {
+        return '<span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-2 py-1"><i class="bi bi-camera-video me-1"></i>Virtual</span>';
+    }
+    return '<span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle px-2 py-1"><i class="bi bi-geo-alt me-1"></i>Presencial</span>';
+}
+
+$tiposTutoria = [
+    'pregrado' => 'Pregrado',
+    'posgrado' => 'Posgrado',
+    'invierno' => 'Invierno (Intensivo)',
+    'verano'   => 'Verano (Intensivo)',
+];
+$postMateria = (int)($_POST['id_materia'] ?? 0);
+$postNivel   = isset($_POST['id_oferta']) ? '' : '';
+$idsMateriasConOferta = array_values(array_unique(array_map('intval', array_column($ofertasDisponibles, 'id_materia'))));
 ?>
 
 <div class="row justify-content-center">
@@ -34,9 +48,9 @@ $volverUrl = ($rolAux === 'estudiante') ? '../views/estudiante/panel.php' : 'tut
         <div>
           <h3 class="fw-bold text-white mb-1 d-flex align-items-center gap-2">
             <i class="bi bi-calendar-plus-fill"></i>
-            <span>Agendar Sesión de Tutoría</span>
+            <span>Materias Disponibles</span>
           </h3>
-          <p class="text-white-50 mb-0">Completa los datos para enviar tu solicitud de apoyo académico.</p>
+          <p class="text-white-50 mb-0">Elige tu materia y el tipo de tutoría. La fecha de la sesión se asigna automáticamente al primer día libre del turno elegido.</p>
         </div>
         <a href="<?= $volverUrl ?>" class="btn btn-light d-flex align-items-center gap-1">
           <i class="bi bi-arrow-left"></i> Volver
@@ -55,100 +69,138 @@ $volverUrl = ($rolAux === 'estudiante') ? '../views/estudiante/panel.php' : 'tut
       </div>
     <?php endif; ?>
 
+    <div class="alert alert-info d-flex align-items-start gap-2 py-2 px-3 rounded-3 shadow-sm mb-4 small">
+      <i class="bi bi-info-circle-fill mt-1"></i>
+      <div>
+        El <b>turno, modalidad y aula</b> son definidos exclusivamente por la administración.
+        Tú eliges la materia y el tipo de tutoría; la <b>fecha de la sesión se asigna
+        automáticamente</b> el próximo día disponible del turno elegido.
+      </div>
+    </div>
+
+    <?php if (empty($ofertasDisponibles)): ?>
+      <div class="card card-custom p-4 p-md-5 text-center">
+        <div class="mb-2 fs-1 text-secondary"><i class="bi bi-calendar-x"></i></div>
+        <h5 class="fw-bold text-dark mb-2">Aún no hay horarios disponibles</h5>
+        <p class="text-muted mb-4 small">
+          La administración aún no publica horarios asignados a un docente para las materias de tu carrera
+          (<?= htmlspecialchars($carreraEstudiante ?: 'sin asignar') ?>).
+          Vuelve más tarde o contacta a la administración.
+        </p>
+        <div class="d-flex justify-content-center gap-2">
+          <a href="<?= $volverUrl ?>" class="btn btn-light px-4 py-2 rounded-3">Volver a mi panel</a>
+        </div>
+      </div>
+    <?php else: ?>
+
     <div class="card card-custom p-4 p-md-5">
       <form method="POST" autocomplete="off" class="needs-validation" novalidate>
     <?= campoCsrf() ?>
         <div class="row g-3">
-          <!-- Materia -->
-          <div class="col-md-12">
-            <label class="form-label fw-semibold text-secondary small text-uppercase">Materia Académica *</label>
-            <select name="id_materia" id="selMateria" class="form-select rounded-3 py-2" required>
-              <option value="" disabled <?= empty($_POST['id_materia']) ? 'selected' : '' ?>>Selecciona la materia que deseas reforzar...</option>
+          <!-- 1. Materia (tarjetas clicables) -->
+          <div class="col-12">
+            <label class="form-label fw-semibold text-secondary small text-uppercase">1. Materia Disponible *</label>
+            <div id="grillaMaterias" class="row g-2">
               <?php foreach ($materias as $m): ?>
-                <option value="<?= $m['id_materia'] ?>" <?= (isset($_POST['id_materia']) && $_POST['id_materia'] == $m['id_materia']) ? 'selected' : '' ?>>
+                <?php $conOferta = in_array((int)$m['id_materia'], $idsMateriasConOferta, true); ?>
+                <div class="col-6 col-md-4">
+                  <button type="button"
+                          class="materia-card <?= $postMateria === (int)$m['id_materia'] ? 'materia-active' : '' ?> <?= $conOferta ? '' : 'materia-disabled' ?>"
+                          data-materia="<?= (int)$m['id_materia'] ?>"
+                          aria-disabled="<?= $conOferta ? 'false' : 'true' ?>"
+                          title="<?= $conOferta ? 'Haz clic para inscribirte' : 'Sin horarios publicados por la administración' ?>">
+                    <span class="materia-icon"><i class="bi bi-journal-bookmark<?= $conOferta ? '' : '-fill' ?>"></i></span>
+                    <span class="materia-info">
+                      <span class="materia-nombre"><?= htmlspecialchars($m['nombre_materia']) ?></span>
+                      <span class="materia-carrera"><?= htmlspecialchars($m['nombre_carrera'] ?? 'General') ?></span>
+                    </span>
+                    <?php if ($conOferta): ?>
+                      <span class="materia-accion"><i class="bi bi-person-plus-fill"></i> Inscribirme</span>
+                    <?php else: ?>
+                      <span class="materia-accion materia-sin"><i class="bi bi-hourglass-split"></i> Sin horarios</span>
+                    <?php endif; ?>
+                  </button>
+                </div>
+              <?php endforeach; ?>
+            </div>
+            <select name="id_materia" id="selMateria" class="d-none" required>
+              <option value=""></option>
+              <?php foreach ($materias as $m): ?>
+                <option value="<?= $m['id_materia'] ?>" <?= $postMateria === (int)$m['id_materia'] ? 'selected' : '' ?>>
                   <?= htmlspecialchars($m['nombre_materia']) ?> (<?= htmlspecialchars($m['nombre_carrera'] ?? 'General') ?>)
                 </option>
               <?php endforeach; ?>
             </select>
-            <?php if (empty($materias)): ?>
-              <div class="form-text text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Tu carrera (<?= htmlspecialchars($carreraEstudiante ?: 'sin asignar') ?>) aún no tiene materias registradas. Pide al administrador que las registre para poder agendar tutorías.</div>
-            <?php else: ?>
-              <div class="form-text"><i class="bi bi-info-circle me-1"></i>Materias de tu carrera (<?= htmlspecialchars($carreraEstudiante ?: 'sin asignar') ?>).</div>
-            <?php endif; ?>
+            <div class="form-text" id="textoMateria"><i class="bi bi-info-circle me-1"></i>Materias de tu carrera (<?= htmlspecialchars($carreraEstudiante ?: 'sin asignar') ?>). Haz clic en una tarjeta para continuar.</div>
             <div class="invalid-feedback">Debes seleccionar una materia.</div>
           </div>
 
-          <!-- Tutor -->
-          <div class="col-md-12">
-            <label class="form-label fw-semibold text-secondary small text-uppercase">Docente Tutor *</label>
-            <select name="id_tutor" id="selTutor" class="form-select rounded-3 py-2" required>
-              <option value="" disabled selected>Selecciona al tutor académico...</option>
-              <?php foreach ($tutores as $t): ?>
-                <option value="<?= $t['id_tutor'] ?>"
-                        data-materias="<?= implode(' ', array_map('intval', $t['materias_ids'])) ?>"
-                        data-estado="<?= htmlspecialchars($t['estado']) ?>"
-                        data-disponibilidad="<?= htmlspecialchars(implode(',', array_map(fn($d) => $d['dia_semana'] . '|' . substr($d['hora_inicio'], 0, 5) . '|' . substr($d['hora_fin'], 0, 5), $t['disponibilidad'] ?? [])), ENT_QUOTES) ?>"
-                        <?= (isset($_POST['id_tutor']) && $_POST['id_tutor'] == $t['id_tutor']) ? 'selected' : '' ?>>
-                  Prof. <?= htmlspecialchars($t['nombre'] . ' ' . $t['apellido']) ?> <?= !empty($t['especialidad']) ? '— ' . htmlspecialchars($t['especialidad']) : '' ?>
+          <!-- 2. Tipo de tutoría -->
+          <div class="col-md-6">
+            <label class="form-label fw-semibold text-secondary small text-uppercase" for="selTipo">Tipo de Tutoría *</label>
+            <select name="tipo_tutoria" id="selTipo" class="form-select rounded-3 py-2" required>
+              <option value="" disabled selected>Selecciona el tipo...</option>
+              <?php foreach ($tiposTutoria as $valor => $etiqueta): ?>
+                <option value="<?= $valor ?>"><?= htmlspecialchars($etiqueta) ?></option>
+              <?php endforeach; ?>
+            </select>
+            <div class="form-text" id="textoTipo"><i class="bi bi-info-circle me-1"></i>Primero elige la materia para ver los tipos con horarios publicados.</div>
+            <div class="invalid-feedback">Debes seleccionar el tipo de tutoría.</div>
+          </div>
+
+          <!-- 3. Horario / Turno -->
+          <div class="col-md-6">
+            <label class="form-label fw-semibold text-secondary small text-uppercase" for="selTurno">Horario (Turno) *</label>
+            <select name="turno" id="selTurno" class="form-select rounded-3 py-2" required>
+              <option value="" disabled selected>Selecciona el turno...</option>
+              <?php foreach ($turnos as $t): ?>
+                <option value="<?= (int)$t['id_turno'] ?>">
+                  <?= htmlspecialchars($t['nombre_turno']) ?> (<?= substr($t['hora_inicio'], 0, 5) ?> - <?= substr($t['hora_fin'], 0, 5) ?>)
                 </option>
               <?php endforeach; ?>
             </select>
-            <div class="invalid-feedback">Debes seleccionar un docente tutor para la materia elegida.</div>
-            <div class="form-text" id="textoTutores"><i class="bi bi-info-circle me-1"></i>El docente debe impartir la materia seleccionada.</div>
+            <div class="form-text" id="textoTurno"><i class="bi bi-info-circle me-1"></i>Los 4 turnos fijos de la UPDS. Se habilitan solo los que tienen horario publicado y asignado.</div>
+            <div class="invalid-feedback">Debes seleccionar un turno con horario publicado.</div>
           </div>
 
-          <!-- Disponibilidad del tutor -->
-          <div class="col-md-12">
-            <div class="alert alert-info d-none mb-2" id="bloqueHorarios">
-              <div class="fw-bold mb-2"><i class="bi bi-calendar-week me-1"></i>Días en que atiende este docente (elige un día y luego la hora):</div>
-              <div id="listarDias" class="d-flex flex-wrap gap-2 mb-3"></div>
-              <div class="fw-bold mb-2 d-none" id="tituloHoras"><i class="bi bi-clock-history me-1"></i>Horarios disponibles ese día:</div>
-              <div id="listarHoras" class="d-flex flex-wrap gap-2"></div>
-              <div class="form-text mt-2" id="infoDia"></div>
+          <!-- 4. Horario preestablecido (turno + tutor + modalidad + aula) -->
+          <div class="col-12">
+            <label class="form-label fw-semibold text-secondary small text-uppercase">Horario Preestablecido *</label>
+            <div id="contenedorOfertas" class="d-flex flex-column gap-2">
+              <?php foreach ($ofertasDisponibles as $o): ?>
+                <label class="oferta-option border rounded-3 p-3 d-flex align-items-start gap-3 mb-1"
+                       data-materia="<?= (int)$o['id_materia'] ?>"
+                       data-nivel="<?= htmlspecialchars($o['nivel_academico']) ?>"
+                       data-turno="<?= (int)$o['id_turno'] ?>"
+                       style="cursor:pointer;" title="Elige este horario">
+                  <input type="radio" name="id_oferta" value="<?= (int)$o['id_oferta'] ?>"
+                         data-materia="<?= (int)$o['id_materia'] ?>"
+                         data-nivel="<?= htmlspecialchars($o['nivel_academico']) ?>"
+                         data-turno="<?= (int)$o['id_turno'] ?>"
+                         class="form-check-input mt-1 oferta-radio"
+                         <?= (isset($_POST['id_oferta']) && $_POST['id_oferta'] == $o['id_oferta']) ? 'checked' : '' ?>>
+                  <span class="flex-grow-1">
+                    <span class="d-flex flex-wrap align-items-center gap-2 flex-grow-1">
+                      <span class="badge bg-light text-dark border px-2 py-1"><i class="bi bi-clock me-1"></i><?= htmlspecialchars($o['nombre_turno']) ?> (<?= substr($o['turno_hora_inicio'] ?? $o['hora_inicio'] ?? '', 0, 5) ?> – <?= substr($o['turno_hora_fin'] ?? $o['hora_fin'] ?? '', 0, 5) ?>)</span>
+                      <?= modalidadBadge($o['modalidad'] ?? 'presencial') ?>
+                      <?php if (!empty($o['lugar_o_enlace'])): ?>
+                        <span class="badge bg-light text-muted border px-2 py-1"><i class="bi bi-geo me-1"></i><?= htmlspecialchars($o['lugar_o_enlace']) ?></span>
+                      <?php endif; ?>
+                    </span>
+                    <span class="d-block small text-muted mt-1">
+                      <i class="bi bi-mortarboard me-1"></i><?= htmlspecialchars($o['nombre_materia']) ?>
+                      <span class="mx-1">•</span><?= htmlspecialchars($o['nivel_academico'] ?? 'pregrado') ?>
+                      <span class="mx-1">•</span>Prof. <?= htmlspecialchars($o['tut_nombre'] . ' ' . $o['tut_apellido']) ?>
+                    </span>
+                  </span>
+                </label>
+              <?php endforeach; ?>
             </div>
+            <div class="form-text" id="textoOfertas"><i class="bi bi-info-circle me-1"></i>Elige uno de los horarios publicados y asignados a un docente.</div>
+            <div class="invalid-feedback">Debes seleccionar un horario disponible.</div>
           </div>
 
-          <!-- Fecha -->
-          <div class="col-md-4">
-            <label class="form-label fw-semibold text-secondary small text-uppercase">Fecha de la Sesión *</label>
-            <input type="date" name="fecha" class="form-control rounded-3 py-2" min="<?= date('Y-m-d') ?>" value="<?= htmlspecialchars($_POST['fecha'] ?? date('Y-m-d')) ?>" required>
-            <div class="invalid-feedback">Elige una fecha (no puede ser en el pasado).</div>
-          </div>
-
-          <!-- Hora Inicio -->
-          <div class="col-md-4">
-            <label class="form-label fw-semibold text-secondary small text-uppercase">Hora Inicio *</label>
-            <input type="time" name="hora_inicio" class="form-control rounded-3 py-2" value="<?= htmlspecialchars($_POST['hora_inicio'] ?? '15:00') ?>" required>
-            <div class="invalid-feedback">Indica la hora de inicio.</div>
-          </div>
-
-          <!-- Hora Fin -->
-          <div class="col-md-4">
-            <label class="form-label fw-semibold text-secondary small text-uppercase">Hora Fin *</label>
-            <input type="time" name="hora_fin" class="form-control rounded-3 py-2" value="<?= htmlspecialchars($_POST['hora_fin'] ?? '16:00') ?>" required>
-            <div class="form-text">Se ajusta sola (1 hora por defecto). Cambia solo si necesitas más o menos tiempo.</div>
-            <div class="invalid-feedback">Indica la hora de fin (debe ser posterior).</div>
-          </div>
-
-          <!-- Modalidad -->
-          <div class="col-md-6">
-            <label class="form-label fw-semibold text-secondary small text-uppercase">Modalidad *</label>
-            <select name="modalidad" id="selModalidad" class="form-select rounded-3 py-2" required>
-              <option value="presencial" <?= (isset($_POST['modalidad']) && $_POST['modalidad'] === 'presencial') ? 'selected' : '' ?>>Presencial (En campus UPDS)</option>
-              <option value="virtual" <?= (isset($_POST['modalidad']) && $_POST['modalidad'] === 'virtual') ? 'selected' : '' ?>>Virtual (Meet / Teams / Zoom)</option>
-            </select>
-          </div>
-
-          <!-- Lugar o Enlace -->
-          <div class="col-md-6">
-            <label class="form-label fw-semibold text-secondary small text-uppercase">Lugar o Enlace</label>
-            <input type="text" name="lugar_o_enlace" id="lugarEnlace" class="form-control rounded-3 py-2"
-                   placeholder="Ej: Aula 204 o https://meet.google.com/..."
-                   value="<?= htmlspecialchars($_POST['lugar_o_enlace'] ?? '') ?>">
-            <div class="form-text" id="textoLugar">Indica el aula física o el enlace de la videollamada.</div>
-          </div>
-
-          <!-- Observaciones / Temas -->
+          <!-- 5. Observaciones / Temas -->
           <div class="col-12">
             <label class="form-label fw-semibold text-secondary small text-uppercase">Temas o Preguntas a Tratar</label>
             <textarea name="observaciones" class="form-control rounded-3" rows="3" maxlength="1000"
@@ -165,265 +217,233 @@ $volverUrl = ($rolAux === 'estudiante') ? '../views/estudiante/panel.php' : 'tut
         </div>
       </form>
     </div>
+    <?php endif; ?>
   </div>
 </div>
 
+<?php if (!empty($ofertasDisponibles)): ?>
 <script>
-  // Filtro dinámico: solo mostrar tutores que impartan la materia seleccionada
-  const selMateria = document.getElementById('selMateria');
-  const selTutor   = document.getElementById('selTutor');
-  const txtTutores = document.getElementById('textoTutores');
-
-  function filtrarTutores() {
-    const materiaId = selMateria.value;
-    if (!materiaId) { return; }
-
-    let visibles = 0;
-    Array.from(selTutor.options).forEach(opt => {
-      if (opt.value === '') return;
-      const materias = (opt.dataset.materias || '').split(' ').filter(Boolean);
-      const activo = opt.dataset.estado === 'activo';
-      const coincide = materias.includes(materiaId);
-      opt.disabled = !(activo && coincide);
-      opt.hidden = !(activo && coincide);
-      if (activo && coincide) visibles++;
-    });
-
-    if (selTutor.selectedOptions[0] && selTutor.selectedOptions[0].disabled) {
-      selTutor.value = '';
-    }
-
-    txtTutores.innerHTML = visibles === 0
-      ? '<i class="bi bi-exclamation-triangle me-1"></i>No hay tutores activos para esta materia aún.'
-      : '<i class="bi bi-info-circle me-1"></i>' + visibles + ' tutor(es) activo(s) disponible(s) para esta materia.';
-  }
-
-  selMateria.addEventListener('change', filtrarTutores);
-  filtrarTutores();
-
-  // ---- Selector de disponibilidad: días y horarios del tutor ----
-  const selFecha        = document.querySelector('[name="fecha"]');
-  const ini             = document.querySelector('[name="hora_inicio"]');
-  const fin             = document.querySelector('[name="hora_fin"]');
-  const bloqueHorarios  = document.getElementById('bloqueHorarios');
-  const listarDias      = document.getElementById('listarDias');
-  const tituloHoras     = document.getElementById('tituloHoras');
-  const listarHoras     = document.getElementById('listarHoras');
-  const infoDia         = document.getElementById('infoDia');
-  const diasSemana      = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
-
-  let seleccionDia    = null; // día de atención elegido por el estudiante (ej: 'Lunes')
-  let seleccionBloque = null; // bloque elegido: { inicio, fin }
-
-  // Mapa: id_tutor -> [{dia, inicio, fin}]
-  const bloquesPorTutor = {};
-  Array.from(selTutor.options).forEach(opt => {
-    if (opt.value === '') return;
-    bloquesPorTutor[opt.value] = (opt.dataset.disponibilidad || '')
-      .split(',').filter(Boolean)
-      .map(b => { const [dia, inicio, fin] = b.split('|'); return { dia, inicio, fin }; });
-  });
-
-  function diaSemanaDe(fechaStr) {
-    if (!fechaStr) return null;
-    const p = fechaStr.split('-');
-    return new Date(+p[0], +p[1] - 1, +p[2]).getDay();
-  }
-
-  function sumarMinutos(hora, minutos) {
-    const [hh, mm] = hora.split(':').map(Number);
-    const t = (hh * 60 + mm + minutos) % (24 * 60);
-    return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0');
-  }
-
-  // Devuelve la próxima fecha (YYYY-MM-DD) que cae en el día 'dia'
-  function siguienteFechaDeDia(dia) {
-    const obj = diasSemana.indexOf(dia);          // Lunes -> 1 ... Sabado -> 6
-    const hoy = new Date();
-    let diff = (obj + 7 - hoy.getDay()) % 7;      // 0 = es hoy mismo
-    const dt = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + diff);
-    return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
-  }
-
-  function bloquesDeTutor() {
-    return bloquesPorTutor[selTutor.value] || [];
-  }
-
-  // Paso 1: mostrar los días (únicos) en que atiende el tutor elegido
-  function renderDias() {
-    if (selTutor.value === '') {
-      bloqueHorarios.classList.add('d-none');
-      return;
-    }
-    bloqueHorarios.classList.remove('d-none');
-
-    const tutoriaDias = [...new Set(bloquesDeTutor().map(b => b.dia))];
-
-    if (tutoriaDias.length === 0) {
-      listarDias.innerHTML = '<span class="badge rounded-pill px-3 py-2 border bg-light text-warning">Sin horarios declarados aún</span>';
-      tituloHoras.classList.add('d-none');
-      listarHoras.innerHTML = '';
-      seleccionDia = null;
-      seleccionBloque = null;
-      infoDia.innerHTML = '';
-      return;
-    }
-
-    listarDias.innerHTML = tutoriaDias.map(d =>
-      '<button type="button" class="btn btn-sm rounded-pill px-3 border ' + (seleccionDia === d ? 'btn-primary text-white' : 'btn-light text-dark') + '" data-dia="' + d + '">' +
-        '<i class="bi bi-calendar-event me-1"></i>' + d +
-      '</button>'
-    ).join('');
-    renderHoras();
-  }
-
-  // Paso 2: mostrar los bloques horarios del día seleccionado
-  function renderHoras() {
-    tituloHoras.classList.toggle('d-none', !seleccionDia);
-    if (!seleccionDia) {
-      listarHoras.innerHTML = '';
-      actualizarInfoDia();
-      return;
-    }
-
-    const bloques = bloquesDeTutor().filter(b => b.dia === seleccionDia);
-    if (bloques.length === 0) {
-      listarHoras.innerHTML = '<span class="badge rounded-pill px-3 py-2 border bg-light text-warning">Sin horarios para ese día aún</span>';
-    } else {
-      listarHoras.innerHTML = bloques.map(b =>
-        '<button type="button" class="btn btn-sm rounded-pill px-3 border ' +
-          (seleccionBloque && seleccionBloque.inicio === b.inicio && seleccionBloque.fin === b.fin ? 'btn-success text-white' : 'btn-light text-dark') +
-          '" data-inicio="' + b.inicio + '" data-fin="' + b.fin + '">' +
-          '<i class="bi bi-clock me-1"></i>' + b.inicio + ' – ' + b.fin +
-        '</button>'
-      ).join('');
-    }
-    actualizarInfoDia();
-  }
-
-  // Al tocar un día (la fecha se ajusta sola a la próxima fecha válida de ese día)
-  listarDias.addEventListener('click', e => {
-    const btn = e.target.closest('button[data-dia]');
-    if (!btn) return;
-    seleccionDia = btn.dataset.dia;
-    seleccionBloque = null;
-    if (selFecha.value) {
-      const diaActual = diasSemana[diaSemanaDe(selFecha.value)];
-      if (diaActual !== seleccionDia) selFecha.value = siguienteFechaDeDia(seleccionDia);
-    } else {
-      selFecha.value = siguienteFechaDeDia(seleccionDia);
-    }
-    renderDias();
-  });
-
-  // Al tocar un horario se rellenan solos: fecha, hora_inicio y hora_fin
-  listarHoras.addEventListener('click', e => {
-    const btn = e.target.closest('button[data-inicio]');
-    if (!btn) return;
-    const bloque = { inicio: btn.dataset.inicio, fin: btn.dataset.fin };
-    seleccionBloque = bloque;
-
-    if (selFecha.value) {
-      const diaActual = diasSemana[diaSemanaDe(selFecha.value)];
-      if (diaActual !== seleccionDia) selFecha.value = siguienteFechaDeDia(seleccionDia);
-    } else {
-      selFecha.value = siguienteFechaDeDia(seleccionDia);
-    }
-
-    ini.value = bloque.inicio;
-    const duracion = sumarMinutos(bloque.inicio, 60);
-    fin.value = duracion > bloque.fin ? bloque.fin : duracion;
-
-    renderHoras();
-  });
-
-  function actualizarInfoDia() {
-    const tutor = selTutor.value;
-    const fecha = selFecha.value;
-    if (!tutor || !fecha) { infoDia.innerHTML = ''; return; }
-
-    const fechaDia = diasSemana[diaSemanaDe(fecha)];
-
-    if (seleccionDia && seleccionDia !== fechaDia) {
-      infoDia.innerHTML = '<i class="bi bi-exclamation-circle me-1 text-warning"></i>La fecha elegida cae <b>' + fechaDia + '</b>, pero seleccionaste <b>' + seleccionDia + '</b>. Al elegir la hora la fecha se ajustará al próximo día de atención.';
-    } else if (seleccionDia && seleccionDia === fechaDia && seleccionBloque) {
-      infoDia.innerHTML = '<i class="bi bi-check-circle me-1 text-success"></i>Horario seleccionado: <b>' + seleccionDia + '</b> de ' + seleccionBloque.inicio + ' a ' + seleccionBloque.fin + ' (1 hora por defecto).';
-    } else if (seleccionDia && seleccionDia === fechaDia) {
-      infoDia.innerHTML = '<i class="bi bi-check-circle me-1 text-success"></i>El día elegido (<b>' + seleccionDia + '</b>) coincide con la fecha. Ahora selecciona la hora.';
-    } else if (!seleccionDia) {
-      if (bloquesDeTutor().some(b => b.dia === fechaDia)) {
-        infoDia.innerHTML = '<i class="bi bi-info-circle me-1"></i>El día elegido (<b>' + fechaDia + '</b>) es atendido por el tutor. Selecciona un día en la lista de arriba para ver sus horarios.';
-      } else {
-        infoDia.innerHTML = '<i class="bi bi-exclamation-circle me-1 text-danger"></i>El día elegido (<b>' + fechaDia + '</b>): este tutor <b>no atiende ese día</b>. Elige un día de la lista.';
-      }
-    }
-  }
-
-  selTutor.addEventListener('change', () => {
-    seleccionDia = null;
-    seleccionBloque = null;
-    renderDias();
-  });
-  selFecha.addEventListener('change', actualizarInfoDia);
-  ini.addEventListener('change', () => {
-    if (!ini.value) return;
-    if (!fin.value || fin.value <= ini.value) {
-      let aux = sumarMinutos(ini.value, 60);
-      const tope = (seleccionBloque && seleccionDia === diasSemana[diaSemanaDe(selFecha.value)]) ? seleccionBloque.fin : null;
-      if (tope && aux > tope) aux = tope;
-      fin.value = aux;
-    }
-  });
-
-  // Al cargar (POST con errores) se restaura lo ya elegido
-  if (selTutor.value) {
-    const fecha = selFecha.value;
-    const fechaDia = fecha ? diasSemana[diaSemanaDe(fecha)] : null;
-    const diasDisponibles = [...new Set(bloquesDeTutor().map(b => b.dia))];
-    if (fechaDia && diasDisponibles.includes(fechaDia)) {
-      seleccionDia = fechaDia;
-      const bloques = bloquesDeTutor().filter(b => b.dia === seleccionDia);
-      const bloqueInicial = ini.value
-        ? bloques.find(b => ini.value >= b.inicio && ini.value < b.fin)
-        : null;
-      seleccionBloque = bloqueInicial || bloques[0] || null;
-    }
-    renderDias();
-  }
-
-  // Requerir URL válida en modalidad virtual
-  const selModalidad = document.getElementById('selModalidad');
-  const lugarEnlace  = document.getElementById('lugarEnlace');
-  const textoLugar   = document.getElementById('textoLugar');
-
-  selModalidad.addEventListener('change', () => {
-    if (selModalidad.value === 'virtual') {
-      lugarEnlace.required = true;
-      lugarEnlace.type = 'url';
-      textoLugar.innerHTML = '<i class="bi bi-info-circle me-1"></i>Obligatorio para tutorías virtuales: pega el enlace de la videoconferencia.';
-    } else {
-      lugarEnlace.required = false;
-      lugarEnlace.type = 'text';
-      textoLugar.innerHTML = 'Indica el aula física o el enlace de la videollamada.';
-    }
-  });
-
-  // Validación visual de Bootstrap
   (() => {
-    const form = document.querySelector('.needs-validation');
-    if (!form) return;
-    form.addEventListener('submit', (e) => {
-      const inicio = form.querySelector('[name="hora_inicio"]');
-      const fin    = form.querySelector('[name="hora_fin"]');
-      if (inicio.value && fin.value && inicio.value >= fin.value) {
-        fin.setCustomValidity('La hora de fin debe ser posterior a la de inicio');
-      } else {
-        fin.setCustomValidity('');
+    const selMateria = document.getElementById('selMateria');
+    const selTipo    = document.getElementById('selTipo');
+    const selTurno   = document.getElementById('selTurno');
+    const textoOfertas = document.getElementById('textoOfertas');
+    const contenedor   = document.getElementById('contenedorOfertas');
+    const radios       = Array.from(document.querySelectorAll('.oferta-radio'));
+    const etiquetas    = Array.from(document.querySelectorAll('.oferta-option'));
+    const sinOfertaMsg = 'No hay horarios publicados con esta combinación. Contacta a la administración.';
+
+    // ---- Tarjetas de materias clicables ----
+    const cardsMateria = Array.from(document.querySelectorAll('.materia-card'));
+    const textoMateria = document.getElementById('textoMateria');
+
+    function marcarTarjetaMateria() {
+      cardsMateria.forEach(c => c.classList.toggle('materia-active', c.dataset.materia === selMateria.value));
+    }
+
+    function seleccionarTarjetaMateria(id) {
+      if (selMateria.value === id) return;
+      selMateria.value = id;
+      marcarTarjetaMateria();
+      if (textoMateria && id) {
+        textoMateria.innerHTML = '<i class="bi bi-check-circle me-1 text-success"></i>Materia seleccionada. Elige el tipo de tutoría y el turno.';
       }
-      if (!form.checkValidity()) { e.preventDefault(); e.stopPropagation(); }
-      form.classList.add('was-validated');
-    }, false);
+      sincronizarSelects();
+      filtrarHorarios();
+    }
+
+    cardsMateria.forEach(c => c.addEventListener('click', () => {
+      if (c.classList.contains('materia-disabled')) {
+        if (textoMateria) textoMateria.innerHTML = '<i class="bi bi-exclamation-triangle me-1 text-warning"></i>Esta materia aún no tiene horarios publicados por la administración. Elige otra o vuelve más tarde.';
+        return;
+      }
+      seleccionarTarjetaMateria(c.dataset.materia);
+    }));
+
+    // ---- Utilidades sobre las ofertas ----
+    function ofertasCoincidentes(materiaId, nivel, turnoId) {
+      return radios.filter(r =>
+        (!materiaId || r.dataset.materia === materiaId) &&
+        (!nivel    || r.dataset.nivel === nivel) &&
+        (!turnoId  || r.dataset.turno === turnoId));
+    }
+
+    // Tipos con oferta para la materia elegida
+    function tiposDisponibles(materiaId) {
+      const set = new Set();
+      radios.forEach(r => { if (!materiaId || r.dataset.materia === materiaId) set.add(r.dataset.nivel); });
+      return set;
+    }
+
+    // Turnos con oferta para materia+tipo
+    function turnosDisponibles(materiaId, nivel) {
+      const set = new Set();
+      radios.forEach(r => {
+        if ((!materiaId || r.dataset.materia === materiaId) && (!nivel || r.dataset.nivel === nivel)) set.add(r.dataset.turno);
+      });
+      return set;
+    }
+
+    // ---- Habilitar/deshabilitar opciones de Tipo y Turno ----
+    function sincronizarSelects() {
+      const materiaId = selMateria.value;
+      const nivel     = selTipo.value;
+      const tiposOk   = tiposDisponibles(materiaId);
+
+      Array.from(selTipo.options).forEach(op => { op.disabled = op.value !== '' && !tiposOk.has(op.value); });
+      if (selTipo.value && !tiposOk.has(selTipo.value)) selTipo.value = '';
+      if (!materiaId) selTipo.value = '';
+
+      const turnosOk  = turnosDisponibles(materiaId, selTipo.value);
+      Array.from(selTurno.options).forEach(op => { op.disabled = op.value !== '' && !turnosOk.has(op.value); });
+      if (selTurno.value && !turnosOk.has(selTurno.value)) selTurno.value = '';
+      if (!selTipo.value) selTurno.value = '';
+
+      const textoAreaTipo = document.getElementById('textoTipo');
+      if (!materiaId) textoAreaTipo.innerHTML = '<i class="bi bi-info-circle me-1"></i>Primero elige la materia para ver los tipos con horarios publicados.';
+      else if (tiposOk.size === 0) textoAreaTipo.innerHTML = '<i class="bi bi-exclamation-triangle me-1 text-warning"></i>Ningún tipo de tutoría tiene horario publicado para esta materia.';
+      else textoAreaTipo.innerHTML = '<i class="bi bi-info-circle me-1"></i>' + tiposOk.size + ' tipo(s) con horarios publicados.';
+
+      const textoAreaTurno = document.getElementById('textoTurno');
+      if (!selTipo.value) textoAreaTurno.innerHTML = '<i class="bi bi-info-circle me-1"></i>Primero elige el tipo de tutoría.';
+      else if (turnosOk.size === 0) textoAreaTurno.innerHTML = '<i class="bi bi-exclamation-triangle me-1 text-warning"></i>Ningún turno tiene horario publicado para esta combinación.';
+      else textoAreaTurno.innerHTML = '<i class="bi bi-info-circle me-1"></i>' + turnosOk.size + ' turno(s) disponibles para esta combinación.';
+    }
+
+    // ---- Filtrar tarjetas de horarios ----
+    function filtrarHorarios() {
+      const materiaId = selMateria.value;
+      const nivel     = selTipo.value;
+      const turnoId   = selTurno.value;
+      let visibles = 0;
+
+      etiquetas.forEach(et => {
+        const coincide = (!materiaId || et.dataset.materia === materiaId) &&
+                         (!nivel    || et.dataset.nivel === nivel) &&
+                         (!turnoId  || et.dataset.turno === turnoId);
+        et.style.display = coincide ? '' : 'none';
+        if (coincide) visibles++;
+      });
+
+      // Desmarcar radios ocultos
+      radios.forEach(r => {
+        if (r.checked && r.closest('.oferta-option').style.display === 'none') r.checked = false;
+      });
+
+      const vacio = document.getElementById('avisoVacio');
+      if (vacio) vacio.remove();
+
+      if (visibles === 0) {
+        const aviso = document.createElement('div');
+        aviso.id = 'avisoVacio';
+        aviso.className = 'bg-light rounded-3 border text-center text-muted p-3 small';
+        aviso.innerHTML = '<i class="bi bi-calendar-x d-block fs-4 mb-1"></i>' + sinOfertaMsg;
+        contenedor.appendChild(aviso);
+        textoOfertas.innerHTML = '<i class="bi bi-exclamation-triangle me-1 text-warning"></i>' + sinOfertaMsg;
+      } else {
+        textoOfertas.innerHTML = '<i class="bi bi-info-circle me-1"></i>' + visibles + ' horario(s) publicado(s) para esta combinación.';
+      }
+    }
+
+    // ---- Eventos ----
+    selMateria.addEventListener('change', () => { sincronizarSelects(); filtrarHorarios(); });
+    selTipo.addEventListener('change',    () => { sincronizarSelects(); filtrarHorarios(); });
+    selTurno.addEventListener('change',   () => { syncTurno(); filtrarHorarios(); });
+
+    function syncTurno() {
+      const materiaId = selMateria.value;
+      const nivel     = selTipo.value;
+      const turnoId   = selTurno.value;
+      if (!materiaId || !nivel || !turnoId) return;
+      const existentes = ofertasCoincidentes(materiaId, nivel, turnoId);
+      if (existentes.length === 1) {
+        existentes[0].checked = true;
+        marcacionActiva();
+      }
+    }
+
+    function marcacionActiva() {
+      etiquetas.forEach(et => et.classList.remove('oferta-active'));
+      const checked = radios.find(r => r.checked);
+      const et = checked ? checked.closest('.oferta-option') : null;
+      if (et) et.classList.add('oferta-active');
+    }
+
+    radios.forEach(r => r.addEventListener('change', () => { marcacionActiva(); }));
+
+    // ----- Inicialización (y restauración en POST con errores) -----
+    sincronizarSelects();
+    filtrarHorarios();
+    marcarTarjetaMateria();
+
+    // Restaurar selección si vino de un POST con errores
+    const radioPost = radios.find(r => r.checked);
+    if (radioPost) {
+      if (radioPost.dataset.nivel) selTipo.value = radioPost.dataset.nivel;
+      if (radioPost.dataset.turno) selTurno.value = radioPost.dataset.turno;
+      sincronizarSelects();
+      filtrarHorarios();
+      if (radioPost.closest('.oferta-option').style.display !== 'none') {
+        marcacionActiva();
+      }
+    }
+
+    // Validación visual de Bootstrap
+    const form = document.querySelector('.needs-validation');
+    if (form) {
+      form.addEventListener('submit', (e) => {
+        const visible = Array.from(document.querySelectorAll('.oferta-radio'))
+                            .filter(r => r.closest('.oferta-option').style.display !== 'none');
+        const checkedVisible = visible.find(r => r.checked);
+        let ok = true;
+
+        visible.forEach(r => { r.setCustomValidity(''); });
+        if (visible.length === 0) {
+          ok = false;
+          if (document.getElementById('avisoVacio')) document.getElementById('avisoVacio').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (!checkedVisible) {
+          visible[0].setCustomValidity('Debes seleccionar un horario disponible.');
+          ok = false;
+        }
+
+        if (!ok || !form.checkValidity()) { e.preventDefault(); e.stopPropagation(); }
+        form.classList.add('was-validated');
+      }, false);
+    }
   })();
 </script>
+
+<style>
+  .materia-card {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .5rem;
+    text-align: left;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 1rem;
+    padding: .9rem 1rem;
+    transition: border-color .15s ease, background .15s ease, transform .15s ease, box-shadow .15s ease;
+  }
+  .materia-card:hover { border-color: #1e40af !important; background: #f8faff; transform: translateY(-1px); }
+  .materia-card.materia-active { border-color: #1e40af !important; box-shadow: 0 0 0 1px #1e40af inset; background: #eef2ff; }
+  .materia-card.materia-disabled { opacity: .55; cursor: not-allowed; filter: grayscale(.4); }
+  .materia-card.materia-disabled:hover { border-color: #e5e7eb; background: #fff; transform: none; }
+  .materia-icon { font-size: 1.15rem; color: #1e40af; line-height: 1; }
+  .materia-info { display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
+  .materia-nombre { font-weight: 600; color: #0f172a; font-size: .9rem; line-height: 1.3; }
+  .materia-carrera { font-size: .72rem; color: #64748b; }
+  .materia-accion {
+    font-size: .72rem; font-weight: 600; color: #1e40af; background: #e0e7ff;
+    padding: .25rem .65rem; border-radius: 999px; margin-top: auto;
+  }
+  .materia-accion.materia-sin { color: #64748b; background: #f1f5f9; }
+  .oferta-option:hover { border-color: #1e40af !important; background: #f8faff; }
+  .oferta-option.oferta-active { border-color: #1e40af !important; box-shadow: 0 0 0 1px #1e40af inset; background: #eef2ff; }
+</style>
+<?php endif; ?>
 
 <?php include __DIR__ . '/../layouts/footer.php'; ?>

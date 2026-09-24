@@ -16,6 +16,7 @@ require_once __DIR__ . '/../../includes/funciones.php';
 iniciarSesion();
 $rolSesion = $_SESSION['rol'] ?? '';
 $nombreSesion = $_SESSION['nombre'] ?? 'Usuario';
+$fotoSesion = $_SESSION['foto'] ?? '';
 $mensajeFlash = getMensaje();
 $act = basename($_SERVER['PHP_SELF']);
 ?>
@@ -38,13 +39,15 @@ $act = basename($_SERVER['PHP_SELF']);
   <style>
     /* ==================== TEMA PROPIO AZUL/BLANCO ==================== */
     :root {
-      --cn-blue: #223B87;
-      --cn-blue-dark: #1a2c6b;
-      --cn-blue-soft: #dbe4f5;
-      --cn-night: #16255c;
+      --cn-blue: #1e40af;
+      --cn-blue-dark: #1e3a8a;
+      --cn-blue-soft: #dbeafe;
+      --cn-night: #172554;
+      --cn-celeste: #3b82f6;
+      --cn-celeste-soft: #eff6ff;
       --cn-slate: #64748b;
       --cn-ink: #0f172a;
-      --cn-bg: #f2f5fb;
+      --cn-bg: #f8fafc;
       --cn-sidebar: 264px;
       --cn-sidebar-collapsed: 84px;
     }
@@ -63,7 +66,7 @@ $act = basename($_SERVER['PHP_SELF']);
     .app-sidebar {
       position: fixed; top: 0; left: 0; bottom: 0;
       width: var(--cn-sidebar);
-      background: linear-gradient(180deg, #0c234d 0%, #16255c 60%, #0a1a3f 100%);
+      background: linear-gradient(180deg, #172554 0%, #1e3a8a 60%, #0f172a 100%);
       z-index: 1050;
       display: flex; flex-direction: column;
       transition: transform .3s ease, width .3s ease;
@@ -75,11 +78,11 @@ $act = basename($_SERVER['PHP_SELF']);
     }
     .brand-logo {
       width: 42px; height: 42px; border-radius: 13px; flex-shrink: 0;
-      background: linear-gradient(135deg, #2f4ba7, #223B87);
-      display: flex; align-items: center; justify-content: center;
-      color: #fff; font-size: 1.3rem;
-      box-shadow: 0 6px 14px rgba(34, 59, 135, .45);
+      background: #fff;
+      padding: 3px;
+      box-shadow: 0 6px 14px rgba(30, 64, 175, .45);
     }
+    .brand-logo img { width: 100%; height: 100%; object-fit: contain; border-radius: inherit; }
     .brand-txt b { display: block; color: #fff; font-weight: 800; font-size: .98rem; letter-spacing: -.2px; line-height: 1.1; }
     .brand-txt span { font-size: .66rem; color: #a9b9de; text-transform: uppercase; letter-spacing: .6px; font-weight: 600; }
     .sidebar-nav { flex: 1; overflow-y: auto; padding: .9rem .8rem; }
@@ -94,8 +97,8 @@ $act = basename($_SERVER['PHP_SELF']);
       text-decoration: none; transition: all .15s; white-space: nowrap;
     }
     .sidebar-nav a i { font-size: 1.05rem; width: 22px; text-align: center; flex-shrink: 0; }
-    .sidebar-nav a:hover { background: rgba(255,255,255,.07); color: #fff; }
-    .sidebar-nav a.active { background: #223B87; color: #fff; box-shadow: 0 6px 16px rgba(34, 59, 135,.4); }
+    .sidebar-nav a:hover { background: rgba(72,164,224,.18); color: #fff; }
+    .sidebar-nav a.active { background: linear-gradient(90deg, #1e40af, #2563eb); color: #fff; box-shadow: 0 6px 16px rgba(30, 64, 175,.4); border-left: 3px solid var(--cn-celeste); }
     .sidebar-foot { padding: .9rem 1rem; border-top: 1px solid rgba(255,255,255,.08); }
     .sidebar-foot a { display: flex; align-items: center; gap: .7rem; color: #a9b9de; font-size: .8rem; font-weight: 600; text-decoration: none; padding: .4rem .4rem; border-radius: 10px; }
     .sidebar-foot a:hover { color: #fff; background: rgba(255,255,255,.06); }
@@ -165,15 +168,17 @@ $act = basename($_SERVER['PHP_SELF']);
     }
     .topbar-left { display: flex; align-items: center; gap: .9rem; }
     .btn-toggle { border: 1px solid #e2e8f0; background: #fff; color: var(--cn-ink); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; cursor: pointer; }
-    .btn-toggle:hover { background: #f1f5f9; }
+    .btn-toggle:hover { background: var(--cn-celeste-soft); }
     .page-title { font-size: 1.08rem; font-weight: 800; margin: 0; letter-spacing: -.3px; }
     .topbar-right { display: flex; align-items: center; gap: .8rem; }
     .avatar-md {
       width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
-      background: linear-gradient(135deg, #223B87, #1a2c6b); color: #fff;
+      background: linear-gradient(135deg, #1e40af, #3b82f6); color: #fff;
       display: flex; align-items: center; justify-content: center;
       font-weight: 800; font-size: .85rem;
     }
+    .avatar-foto { overflow: hidden; padding: 0; background: #fff; }
+    .avatar-foto img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
     .dropdown-menu { border: none; border-radius: 14px; box-shadow: 0 16px 40px rgba(15,23,42,.14); padding: .5rem; }
     .dropdown-item { border-radius: 9px; padding: .55rem .8rem; font-size: .88rem; font-weight: 600; }
     .dropdown-item:hover { background: #f1f5f9; color: var(--cn-blue); }
@@ -191,32 +196,32 @@ $act = basename($_SERVER['PHP_SELF']);
     .card-custom:hover { box-shadow: 0 14px 32px rgba(15,23,42,.09); }
     .stat-card:hover { transform: translateY(-3px); }
     .hero-band {
-      background: linear-gradient(120deg, #16255c 0%, #1a2c6b 55%, #223B87 100%);
+      background: linear-gradient(120deg, #1e3a8a 0%, #1e40af 55%, #3b82f6 130%);
       color: #fff; border-radius: 18px;
       box-shadow: 0 12px 32px rgba(30,64,175,.28);
     }
     .stat-ico { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; flex-shrink: 0; }
-    .bg-indigo { background: #e3e9f5 !important; }
-    .text-indigo { color: #223B87 !important; }
+    .bg-indigo { background: #dbeafe !important; }
+    .text-indigo { color: #1e40af !important; }
     .text-ok { color: #059669 !important; }
-    .avatar-lg { width: 84px; height: 84px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.8rem; background: linear-gradient(135deg, #223B87, #1a2c6b); color: #fff; box-shadow: 0 8px 20px rgba(34, 59, 135,.35); }
+    .avatar-lg { width: 84px; height: 84px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.8rem; background: linear-gradient(135deg, #1e40af, #3b82f6); color: #fff; box-shadow: 0 8px 20px rgba(30, 64, 175,.35); }
     .stat-sub { font-size: .78rem; color: var(--cn-slate); border-top: 1px solid #f1f5f9; padding-top: .5rem; }
 
     /* Botones primarios azul */
-    .btn-primary { background: #223B87; border-color: #223B87; font-weight: 600; }
-    .btn-primary:hover { background: #1a2c6b; border-color: #1a2c6b; }
-    .btn-primary.disabled, .btn-primary:disabled { background: #a9b9de; border-color: #a9b9de; }
+    .btn-primary { background: #1e40af; border-color: #1e40af; font-weight: 600; }
+    .btn-primary:hover { background: #1e3a8a; border-color: #1e3a8a; }
+    .btn-primary.disabled, .btn-primary:disabled { background: #93c5fd; border-color: #93c5fd; }
     .btn-success { background: #059669; border-color: #059669; font-weight: 600; }
     .btn-info { background: #0ea5e9; border-color: #0ea5e9; color: #fff; font-weight: 600; }
-    .btn-outline-primary { color: #223B87; border-color: #c9d4ea; }
-    .btn-outline-primary:hover { background: #223B87; border-color: #223B87; }
+    .btn-outline-primary { color: #1e40af; border-color: #bfdbfe; }
+    .btn-outline-primary:hover { background: #1e40af; border-color: #1e40af; }
     .btn-icon { width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; }
 
     /* Badges */
     .badge-state { font-size: .72rem; font-weight: 600; }
     .badge-rol { font-size: .72rem; letter-spacing: .4px; }
     .badge-admin { background-color: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
-    .badge-tutor { background-color: #e3e9f5; color: #1a2c6b; border: 1px solid #a9b9de; }
+    .badge-tutor { background-color: #dbeafe; color: #1e3a8a; border: 1px solid #93c5fd; }
     .badge-estudiante { background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
 
     /* Tablas */
@@ -227,8 +232,8 @@ $act = basename($_SERVER['PHP_SELF']);
 
     /* Formularios */
     .form-control, .form-select { border-color: #dbe2ef; border-radius: 10px; }
-    .form-control:focus, .form-select:focus { border-color: #223B87; box-shadow: 0 0 0 .2rem rgba(34, 59, 135,.12); }
-    .form-check-input:checked { background-color: #223B87; border-color: #223B87; }
+    .form-control:focus, .form-select:focus { border-color: #1e40af; box-shadow: 0 0 0 .2rem rgba(30, 64, 175,.12); }
+    .form-check-input:checked { background-color: #1e40af; border-color: #1e40af; }
 
     /* Alertas */
     .alert { border-radius: 12px; }
@@ -250,7 +255,7 @@ $act = basename($_SERVER['PHP_SELF']);
 <!-- ============ SIDEBAR ============ -->
 <aside class="app-sidebar collapsed" id="appSidebar">
   <div class="brand-side">
-    <span class="brand-logo"><i class="bi bi-mortarboard-fill"></i></span>
+    <span class="brand-logo"><img src="/assets/img/upds-logo.png" alt="Logo UPDS"></span>
     <span class="brand-txt"><b>UPDS Tutorías</b><span>Apoyo Académico</span></span>
   </div>
 
@@ -263,10 +268,13 @@ $act = basename($_SERVER['PHP_SELF']);
       <a class="<?= strpos($act, 'carreras') !== false ? 'active' : '' ?>" href="/controllers/carreras_listar.php"><i class="bi bi-mortarboard"></i><span>Carreras</span></a>
       <a class="<?= strpos($act, 'tutores') !== false ? 'active' : '' ?>" href="/controllers/tutores_listar.php"><i class="bi bi-person-video3"></i><span>Tutores</span></a>
       <a class="<?= strpos($act, 'estudiantes') !== false ? 'active' : '' ?>" href="/controllers/estudiantes_listar.php"><i class="bi bi-mortarboard-fill"></i><span>Estudiantes</span></a>
+      <a class="<?= strpos($act, 'ofertas') !== false ? 'active' : '' ?>" href="/controllers/ofertas_listar.php"><i class="bi bi-megaphone"></i><span>Ofertas</span></a>
       <a class="<?= strpos($act, 'tutorias') !== false ? 'active' : '' ?>" href="/controllers/tutorias_listar.php"><i class="bi bi-calendar-check-fill"></i><span>Tutorías</span></a>
     <?php elseif ($rolSesion === 'tutor'): ?>
       <a class="<?= strpos($act, 'tutor/panel') !== false ? 'active' : '' ?>" href="/views/tutor/panel.php"><i class="bi bi-speedometer2"></i><span>Mi Panel</span></a>
-      <a class="<?= strpos($act, 'disponibilidad') !== false ? 'active' : '' ?>" href="/controllers/tutores_disponibilidad.php"><i class="bi bi-clock-history"></i><span>Horarios y Materias</span></a>
+      <a class="<?= strpos($act, 'ofertas') !== false ? 'active' : '' ?>" href="/controllers/ofertas_tutor.php"><i class="bi bi-megaphone"></i><span>Ofertas Disponibles</span></a>
+      <a class="<?= strpos($act, 'disponibilidad') !== false ? 'active' : '' ?>" href="/controllers/tutores_disponibilidad.php"><i class="bi bi-clock-history"></i><span>Mis Horarios y Materias</span></a>
+      <a class="<?= strpos($act, 'mis_estudiantes') !== false ? 'active' : '' ?>" href="/views/tutor/mis_estudiantes.php"><i class="bi bi-people-fill"></i><span>Mis Estudiantes</span></a>
       <a class="<?= strpos($act, 'perfil') !== false ? 'active' : '' ?>" href="/controllers/perfil.php"><i class="bi bi-person-gear"></i><span>Mi Perfil</span></a>
     <?php elseif ($rolSesion === 'estudiante'): ?>
       <a class="<?= strpos($act, 'estudiante/panel') !== false ? 'active' : '' ?>" href="/views/estudiante/panel.php"><i class="bi bi-speedometer2"></i><span>Mi Panel</span></a>
@@ -276,7 +284,6 @@ $act = basename($_SERVER['PHP_SELF']);
   </nav>
 
   <div class="sidebar-foot">
-    <a href="/"><i class="bi bi-globe2"></i><span>Ver sitio público</span></a>
     <a href="/controllers/logout.php" style="color:#fca5a5;"><i class="bi bi-box-arrow-right"></i><span>Cerrar Sesión</span></a>
   </div>
 </aside>
@@ -296,12 +303,12 @@ $act = basename($_SERVER['PHP_SELF']);
             $iniNombre = mb_substr($nombreSesion, 0, 1);
             $segPalabra = explode(' ', $nombreSesion);
             $iniSegundo = isset($segPalabra[1]) ? mb_substr($segPalabra[1], 0, 1) : '';
-            echo strtoupper($iniNombre . $iniSegundo);
+            echo avatarHTML($fotoSesion, strtoupper($iniNombre . $iniSegundo), 'avatar-md');
           ?>
         </span>
         <span class="d-none d-md-inline text-start lh-sm me-1">
           <span class="d-block fw-bold" style="font-size:.82rem;"><?= htmlspecialchars($nombreSesion) ?></span>
-          <span class="d-block text-uppercase" style="font-size:.6rem; opacity:.8; color:#223B87;"><?= htmlspecialchars($rolSesion) ?></span>
+          <span class="d-block text-uppercase" style="font-size:.6rem; opacity:.8; color:#1e40af;"><?= htmlspecialchars($rolSesion) ?></span>
         </span>
       </button>
       <ul class="dropdown-menu dropdown-menu-end">

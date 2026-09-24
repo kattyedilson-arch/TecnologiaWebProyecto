@@ -50,6 +50,7 @@ $misHorarios = $tutorModel->obtenerDisponibilidad($idTutor);
 
 $pendientes = count(array_filter($misTutorias, fn($t) => $t['estado'] === 'pendiente'));
 $confirmadas = count(array_filter($misTutorias, fn($t) => $t['estado'] === 'confirmada'));
+$enProceso = count(array_filter($misTutorias, fn($t) => $t['estado'] === 'en_proceso'));
 $realizadas = count(array_filter($misTutorias, fn($t) => $t['estado'] === 'realizada'));
 $canceladas  = count(array_filter($misTutorias, fn($t) => $t['estado'] === 'cancelada'));
 
@@ -71,7 +72,7 @@ include __DIR__ . '/../layouts/header.php';
     <div class="hero-band p-4 p-md-4 mb-3">
       <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
         <div class="d-flex align-items-center gap-3">
-          <div class="avatar-lg d-none d-sm-flex"><?= strtoupper(mb_substr($_SESSION['nombre'] ?? 'T', 0, 1)) ?></div>
+          <?= avatarHTML($_SESSION['foto'] ?? '', strtoupper(mb_substr($_SESSION['nombre'] ?? 'T', 0, 1)), 'avatar-lg d-none d-sm-flex') ?>
           <div>
             <div class="d-flex align-items-center gap-2 mb-1">
               <span class="badge text-bg-light text-dark border px-3 py-1" style="font-size:.68rem; letter-spacing:.6px; text-transform:uppercase;">
@@ -88,16 +89,20 @@ include __DIR__ . '/../layouts/header.php';
             </p>
           </div>
         </div>
-        <a href="/controllers/tutores_disponibilidad.php?id=<?= $idTutor ?>" class="btn btn-warning text-dark fw-bold d-flex align-items-center gap-2 shadow-sm">
+        <a href="/controllers/tutores_disponibilidad.php?id=<?= $idTutor ?>" class="btn btn-primary fw-bold d-flex align-items-center gap-2 shadow-sm" style="border:1px solid rgba(255,255,255,.5);">
           <i class="bi bi-clock-history"></i>
           <span>Mis Horarios y Materias</span>
+        </a>
+        <a href="/controllers/ofertas_tutor.php" class="btn btn-warning fw-bold d-flex align-items-center gap-2 shadow-sm" style="border:1px solid rgba(255,255,255,.5);">
+          <i class="bi bi-megaphone"></i>
+          <span>Ofertas Disponibles</span>
         </a>
       </div>
     </div>
   </div>
 
   <!-- Métricas en vivo -->
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md">
     <div class="card card-custom stat-card p-3">
       <div class="d-flex align-items-center gap-3">
         <div class="stat-ico bg-warning bg-opacity-25 text-warning"><i class="bi bi-hourglass-split"></i></div>
@@ -106,7 +111,7 @@ include __DIR__ . '/../layouts/header.php';
       <small class="text-muted">Solicitudes Pendientes</small>
     </div>
   </div>
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md">
     <div class="card card-custom stat-card p-3">
       <div class="d-flex align-items-center gap-3">
         <div class="stat-ico bg-info bg-opacity-10 text-info"><i class="bi bi-calendar-check"></i></div>
@@ -115,7 +120,16 @@ include __DIR__ . '/../layouts/header.php';
       <small class="text-muted">Sesiones Confirmadas</small>
     </div>
   </div>
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md">
+    <div class="card card-custom stat-card p-3">
+      <div class="d-flex align-items-center gap-3">
+        <div class="stat-ico bg-indigo bg-opacity-10 text-indigo"><i class="bi bi-play-circle"></i></div>
+        <div><h4 class="fw-bold mb-0 text-indigo"><?= $enProceso ?></h4></div>
+      </div>
+      <small class="text-muted">En Proceso</small>
+    </div>
+  </div>
+  <div class="col-6 col-md">
     <div class="card card-custom stat-card p-3">
       <div class="d-flex align-items-center gap-3">
         <div class="stat-ico bg-success bg-opacity-10 text-success"><i class="bi bi-check2-circle"></i></div>
@@ -124,7 +138,7 @@ include __DIR__ . '/../layouts/header.php';
       <small class="text-muted">Tutorías Realizadas</small>
     </div>
   </div>
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md">
     <div class="card card-custom stat-card p-3">
       <div class="d-flex align-items-center gap-3">
         <div class="stat-ico bg-danger bg-opacity-10 text-danger"><i class="bi bi-x-circle"></i></div>
@@ -213,6 +227,7 @@ include __DIR__ . '/../layouts/header.php';
               <th>Materia</th>
               <th>Estudiante</th>
               <th>Modalidad</th>
+              <th>Tipo</th>
               <th>Estado</th>
               <th class="text-end pe-4">Acciones</th>
             </tr>
@@ -222,6 +237,7 @@ include __DIR__ . '/../layouts/header.php';
               <?php
                 $badgeEstado = 'bg-warning text-dark';
                 if ($t['estado'] === 'confirmada') $badgeEstado = 'bg-info text-white';
+                if ($t['estado'] === 'en_proceso') $badgeEstado = 'bg-indigo text-white';
                 if ($t['estado'] === 'realizada') $badgeEstado = 'bg-success text-white';
                 if ($t['estado'] === 'cancelada') $badgeEstado = 'bg-danger text-white';
               ?>
@@ -240,7 +256,7 @@ include __DIR__ . '/../layouts/header.php';
                 </td>
                 <td>
                   <div class="d-flex align-items-center gap-2">
-                    <div class="avatar-md" style="width:34px; height:34px; font-size:.72rem;"><?= iniciales($t['est_nombre'] ?? '', $t['est_apellido'] ?? '') ?></div>
+                    <?= avatarHTML($t['est_foto'] ?? '', iniciales($t['est_nombre'] ?? '', $t['est_apellido'] ?? ''), 'avatar-md', 'width:34px; height:34px; font-size:.72rem;') ?>
                     <div>
                       <div class="fw-medium text-dark"><?= htmlspecialchars($t['est_nombre'] . ' ' . $t['est_apellido']) ?></div>
                       <small class="text-muted"><?= htmlspecialchars($t['est_correo']) ?></small>
@@ -252,6 +268,26 @@ include __DIR__ . '/../layouts/header.php';
                   <?php if (!empty($t['lugar_o_enlace'])): ?>
                     <div class="small text-muted text-truncate" style="max-width: 140px;" title="<?= htmlspecialchars($t['lugar_o_enlace']) ?>"><?= htmlspecialchars($t['lugar_o_enlace']) ?></div>
                   <?php endif; ?>
+                </td>
+                <td>
+                  <?php
+                    $badgeNivel = 'bg-primary text-white';
+                    $textoNivel = 'Pregrado';
+                    if (($t['nivel_academico'] ?? 'pregrado') === 'posgrado') {
+                      $badgeNivel = 'bg-indigo text-indigo';
+                      $textoNivel = 'Posgrado';
+                    } elseif (($t['nivel_academico'] ?? 'pregrado') === 'invierno') {
+                      $badgeNivel = 'bg-info text-white';
+                      $textoNivel = 'Invierno';
+                    } elseif (($t['nivel_academico'] ?? 'pregrado') === 'verano') {
+                      $badgeNivel = 'bg-warning text-dark';
+                      $textoNivel = 'Verano';
+                    } elseif (!in_array(($t['nivel_academico'] ?? 'pregrado'), ['pregrado', 'posgrado', 'invierno', 'verano'], true)) {
+                      $badgeNivel = 'bg-secondary text-white';
+                      $textoNivel = htmlspecialchars($t['nivel_academico']);
+                    }
+                  ?>
+                  <span class="badge <?= $badgeNivel ?>"><?= $textoNivel ?></span>
                 </td>
                 <td>
                   <span class="badge rounded-pill px-3 py-1 <?= $badgeEstado ?>"><?= ucfirst($t['estado']) ?></span>
@@ -275,8 +311,13 @@ include __DIR__ . '/../layouts/header.php';
                         <i class="bi bi-x-circle"></i>
                       </button>
                     <?php elseif ($t['estado'] === 'confirmada'): ?>
+                      <a href="/controllers/tutorias_cambiar_estado.php?id=<?= $t['id_tutoria'] ?>&estado=en_proceso&token=<?= tokenCsrfUrl() ?>"
+                         class="btn btn-sm btn-indigo d-flex align-items-center gap-1" title="Iniciar sesión (En Proceso)">
+                        <i class="bi bi-play-circle"></i> Iniciar Sesión
+                      </a>
+                    <?php elseif ($t['estado'] === 'en_proceso'): ?>
                       <a href="/controllers/tutorias_cambiar_estado.php?id=<?= $t['id_tutoria'] ?>&estado=realizada&token=<?= tokenCsrfUrl() ?>"
-                         class="btn btn-sm btn-primary d-flex align-items-center gap-1" title="Marcar como realizada">
+                         class="btn btn-sm btn-success d-flex align-items-center gap-1" title="Marcar como realizada">
                         <i class="bi bi-check2-all"></i> Marcar Realizada
                       </a>
                     <?php endif; ?>

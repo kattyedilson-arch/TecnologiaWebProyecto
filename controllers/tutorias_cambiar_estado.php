@@ -2,11 +2,14 @@
 // =========================================================
 // CONTROLADOR: CAMBIAR ESTADO DE TUTORÍA (tutorias_cambiar_estado.php)
 // ---------------------------------------------------------
-// Cambia el estado de una tutoría (confirmada/realizada/
-// cancelada). Valida el estado, que la tutoría exista y aplica
-// CONTROL DE PERMISOS por rol:
+// Cambia el estado de una tutoría (confirmada/en_proceso/
+// realizada/cancelada). Valida el estado, que la tutoría exista,
+// aplica CONTROL DE PERMISOS por rol y RESTRICCIONES de
+// transición:
+//   Ciclo: pendiente -> confirmada -> en_proceso -> realizada (o cancelada)
 //   - administrador: puede hacer cualquier transición
-//   - tutor: solo sobre SUS tutorías (aceptar, marcar realizada, cancelar)
+//   - tutor: solo sobre SUS tutorías (aceptar, iniciar, marcar
+//     realizada, cancelar mientras no esté realizada)
 //   - estudiante: solo cancelar las SUYAS (pendiente o confirmada)
 // =========================================================
 require_once __DIR__ . '/../includes/verificar_sesion.php';
@@ -21,7 +24,20 @@ $idTutoria = $_REQUEST['id'] ?? null;
 $nuevoEstado = $_REQUEST['estado'] ?? null;
 $observaciones = $_REQUEST['observaciones'] ?? null;
 
-$estadosValidos = ['pendiente', 'confirmada', 'realizada', 'cancelada'];
+$estadosValidos = ['pendiente', 'confirmada', 'en_proceso', 'realizada', 'cancelada'];
+
+// Transiciones permitidas para no-admin:
+//   confirmada  <- pendiente   (aceptar)
+//   en_proceso  <- confirmada  (iniciar sesión)
+//   realizada   <- en_proceso  (finalizar)
+//   cancelada   <- pendiente/confirmada/en_proceso
+$transicionesPermitidas = [
+    'confirmada' => ['pendiente'],
+    'en_proceso' => ['confirmada'],
+    'realizada'  => ['en_proceso'],
+    'cancelada'  => ['pendiente', 'confirmada', 'en_proceso']
+];
+
 $rol = $_SESSION['rol'] ?? '';
 $idUsuario = $_SESSION['id_usuario'] ?? 0;
 
@@ -79,15 +95,10 @@ if (!$permitido) {
 }
 
 // ===== Restricciones de transición (reglas de negocio) =====
-if ($rol !== 'administrador') {
-    // El estudiante solo puede cancelar desde 'pendiente' o 'confirmada'
-    if ($rol === 'estudiante' && $nuevoEstado === 'cancelada' && !in_array($tutoria['estado'], ['pendiente', 'confirmada'], true)) {
-        setMensaje('danger', 'Solo puedes cancelar tutorías pendientes o confirmadas.');
-        redirigir($volver);
-    }
-    // El tutor no puede cancelar una sesión ya realizada
-    if ($rol === 'tutor' && $nuevoEstado === 'cancelada' && $tutoria['estado'] === 'realizada') {
-        setMensaje('danger', 'No puedes cancelar una sesión ya realizada.');
+if ($rol !== 'administrador' && $nuevoEstado !== $tutoria['estado']) {
+    $permitidosDesde = $transicionesPermitidas[$nuevoEstado] ?? [];
+    if (!in_array($tutoria['estado'], $permitidosDesde, true)) {
+        setMensaje('danger', 'No puedes cambiar de "' . $tutoria['estado'] . '" a "' . $nuevoEstado . '".');
         redirigir($volver);
     }
 }

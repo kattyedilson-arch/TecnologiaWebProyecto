@@ -194,6 +194,19 @@ function iniciales($nombre, $apellido)
     return strtoupper($iniNombre . $iniApellido);
 }
 
+// Renderiza un avatar circular: <img> si hay foto de perfil o, como
+// respaldo, una imagen por defecto (y las iniciales como alt). $clase
+// puede ser "avatar-md", "avatar-lg", etc. $extra permite estilos
+// inline (p. ej. degradado).
+function avatarHTML($foto, $inicialesTexto, $clase = 'avatar-md', $extra = '')
+{
+    $estilo = $extra !== '' ? ' style="' . htmlspecialchars($extra, ENT_QUOTES) . '"' : '';
+    if (!empty($foto)) {
+        return '<span class="' . trim($clase) . ' avatar-foto"' . $estilo . '><img src="' . htmlspecialchars($foto, ENT_QUOTES) . '" alt="Foto de perfil"></span>';
+    }
+    return '<span class="' . trim($clase) . ' avatar-foto"' . $estilo . '><img src="/assets/img/avatar-default.svg" alt="' . htmlspecialchars($inicialesTexto) . '"></span>';
+}
+
 // ---------------------------------------------------------
 // PROTECCIÓN CSRF (Cross-Site Request Forgery)
 // ---------------------------------------------------------

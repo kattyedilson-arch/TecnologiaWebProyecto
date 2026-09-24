@@ -1,0 +1,9 @@
+# =========================================================
+# Seguridad: carpeta de fotos de perfil
+# ---------------------------------------------------------
+# Solo permite servir imágenes. Cualquier intento de
+# acceder/ejecutar un archivo PHP se bloquea.
+# =========================================================
+<FilesMatch "\.(?i:php|phtml|phar)$">
+  Require all denied
+</FilesMatch>

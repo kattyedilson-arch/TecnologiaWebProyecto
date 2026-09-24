@@ -60,6 +60,10 @@ include __DIR__ . '/../layouts/header.php';
       'ultimasTutorias'  => $ultimasTutorias,
       'topTutores'       => $topTutores,
       'materiasTop'      => $materiasTop,
+      'desgloseNivel'    => $desgloseNivel,
+      'resumenOfertas'   => $resumenOfertas,
+      'resumenTurnos'    => $resumenTurnos,
+      'tokenUrl'         => tokenCsrfUrl(),
   ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 </script>
 
@@ -76,7 +80,10 @@ include __DIR__ . '/../layouts/header.php';
         <a href="/controllers/tutorias_listar.php" class="btn btn-light fw-semibold d-flex align-items-center gap-2 shadow-sm">
           <i class="bi bi-calendar-week"></i> Ver Tutorías
         </a>
-        <a href="/controllers/usuarios_listar.php" class="btn btn-warning text-dark fw-bold d-flex align-items-center gap-2 shadow-sm">
+        <a href="/controllers/tutores_disponibilidad.php" class="btn btn-light fw-semibold d-flex align-items-center gap-2 shadow-sm">
+          <i class="bi bi-clock-history"></i> Gestionar Turnos
+        </a>
+        <a href="/controllers/usuarios_listar.php" class="btn btn-primary fw-bold d-flex align-items-center gap-2 shadow-sm" style="border:1px solid rgba(255,255,255,.5);">
           <i class="bi bi-people-fill"></i> Gestionar Usuarios
         </a>
       </div>
@@ -135,6 +142,91 @@ include __DIR__ . '/../layouts/header.php';
     </div>
   </div>
 
+  <!-- Tutorías por Nivel Académico -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card card-custom stat-card p-3 h-100 border-start" style="border-left: 4px solid #1e40af !important;">
+        <div class="d-flex align-items-center gap-3">
+          <div class="stat-ico" style="background: rgba(30,64,175,0.1); color: #1e40af;"><i class="bi bi-mortarboard"></i></div>
+          <div>
+            <h4 class="fw-bold mb-0 text-dark">{{ nivelCount('pregrado') }}</h4>
+            <small class="text-muted">Pregrado</small>
+          </div>
+        </div>
+        <div class="stat-sub mt-2"><i class="bi bi-percent me-1"></i>{{ nivelPct('pregrado') }}% del total</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card card-custom stat-card p-3 h-100 border-start" style="border-left: 4px solid #6366f1 !important;">
+        <div class="d-flex align-items-center gap-3">
+          <div class="stat-ico bg-indigo text-indigo"><i class="bi bi-award"></i></div>
+          <div>
+            <h4 class="fw-bold mb-0 text-dark">{{ nivelCount('posgrado') }}</h4>
+            <small class="text-muted">Posgrado</small>
+          </div>
+        </div>
+        <div class="stat-sub mt-2"><i class="bi bi-percent me-1"></i>{{ nivelPct('posgrado') }}% del total</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card card-custom stat-card p-3 h-100 border-start" style="border-left: 4px solid #0dcaf0 !important;">
+        <div class="d-flex align-items-center gap-3">
+          <div class="stat-ico bg-info bg-opacity-10 text-info"><i class="bi bi-snow"></i></div>
+          <div>
+            <h4 class="fw-bold mb-0 text-dark">{{ nivelCount('invierno') }}</h4>
+            <small class="text-muted">Invierno</small>
+          </div>
+        </div>
+        <div class="stat-sub mt-2"><i class="bi bi-percent me-1"></i>{{ nivelPct('invierno') }}% del total</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card card-custom stat-card p-3 h-100 border-start" style="border-left: 4px solid #ffc107 !important;">
+        <div class="d-flex align-items-center gap-3">
+          <div class="stat-ico bg-warning bg-opacity-10 text-warning"><i class="bi bi-sun"></i></div>
+          <div>
+            <h4 class="fw-bold mb-0 text-dark">{{ nivelCount('verano') }}</h4>
+            <small class="text-muted">Verano</small>
+          </div>
+        </div>
+        <div class="stat-sub mt-2"><i class="bi bi-percent me-1"></i>{{ nivelPct('verano') }}% del total</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Estado de Ofertas -->
+  <div class="card card-custom shadow-sm p-4 mb-4">
+    <h6 class="fw-bold mb-3 text-uppercase small text-secondary d-flex align-items-center gap-2">
+      <i class="bi bi-megaphone text-primary"></i> Ofertas de Tutoría
+    </h6>
+    <div class="row g-3">
+      <div class="col-6 col-md-3">
+        <div class="text-center p-3 rounded-3 bg-primary bg-opacity-10">
+          <h4 class="fw-bold text-primary mb-0">{{ resumenOfertas.activas || 0 }}</h4>
+          <small class="text-muted">Activas</small>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="text-center p-3 rounded-3 bg-success bg-opacity-10">
+          <h4 class="fw-bold text-success mb-0">{{ resumenOfertas.aceptadas || 0 }}</h4>
+          <small class="text-muted">Aceptadas</small>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="text-center p-3 rounded-3 bg-warning bg-opacity-25">
+          <h4 class="fw-bold text-warning mb-0">{{ resumenOfertas.pendientes_respuesta || 0 }}</h4>
+          <small class="text-muted">Pendientes</small>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="text-center p-3 rounded-3 bg-secondary bg-opacity-10">
+          <h4 class="fw-bold text-secondary mb-0">{{ resumenOfertas.cerradas || 0 }}</h4>
+          <small class="text-muted">Cerradas</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Estado de tutorías -->
   <div class="card card-custom shadow-sm p-4 mb-4">
     <h6 class="fw-bold mb-3 text-uppercase small text-secondary d-flex align-items-center gap-2">
@@ -160,6 +252,12 @@ include __DIR__ . '/../layouts/header.php';
         </div>
       </div>
       <div class="col-6 col-md-2">
+        <div class="text-center p-3 rounded-3 bg-indigo bg-opacity-10">
+          <h4 class="fw-bold text-indigo mb-0">{{ resumen.en_proceso }}</h4>
+          <small class="text-muted">En Proceso</small>
+        </div>
+      </div>
+      <div class="col-6 col-md-2">
         <div class="text-center p-3 rounded-3 bg-success bg-opacity-10">
           <h4 class="fw-bold text-success mb-0">{{ resumen.realizadas }}</h4>
           <small class="text-muted">Realizadas</small>
@@ -170,6 +268,40 @@ include __DIR__ . '/../layouts/header.php';
           <h4 class="fw-bold text-danger mb-0">{{ resumen.canceladas }}</h4>
           <small class="text-muted">Canceladas</small>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Horarios / Turnos -->
+  <div class="card card-custom shadow-sm p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h6 class="fw-bold mb-0 text-uppercase small text-secondary d-flex align-items-center gap-2">
+        <i class="bi bi-clock text-primary"></i> Horarios — Disponibilidad de Tutores por Turno
+      </h6>
+      <a href="/controllers/tutores_disponibilidad.php" class="btn btn-sm btn-outline-primary rounded-3">
+        <i class="bi bi-gear me-1"></i> Gestionar
+      </a>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-3" v-for="turno in resumenTurnos" :key="turno.id_turno">
+        <div class="card h-100 border-0 shadow-sm">
+          <div class="card-body text-center p-3">
+            <div class="fw-bold text-dark mb-1">{{ turno.nombre_turno }}</div>
+            <div class="text-muted small mb-2">
+              <i class="bi bi-clock me-1"></i>{{ turno.hora_inicio.substring(0,5) }} - {{ turno.hora_fin.substring(0,5) }}
+            </div>
+            <div class="mb-2">
+              <span class="fw-bold text-primary" style="font-size: 1.6rem;">{{ turno.total_tutores }}</span>
+              <div class="text-muted small">tutor(es) asignado(s)</div>
+            </div>
+            <div class="progress" style="height: 6px;">
+              <div class="progress-bar rounded-pill" :style="estiloBarraTurno(turno)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div v-if="!resumenTurnos.length" class="col-12 text-center py-3 text-muted">
+        <i class="bi bi-clock-history me-1"></i>No hay turnos configurados aún.
       </div>
     </div>
   </div>
@@ -195,7 +327,9 @@ include __DIR__ . '/../layouts/header.php';
                 <th>Materia</th>
                 <th>Docente</th>
                 <th>Fecha</th>
-                <th class="text-end pe-4">Estado</th>
+                <th>Nivel</th>
+                <th>Estado</th>
+                <th class="text-end pe-4">Acciones</th>
               </tr>
             </thead>
             <TransitionGroup name="listado-tutorias" tag="tbody">
@@ -204,8 +338,32 @@ include __DIR__ . '/../layouts/header.php';
                 <td class="text-primary fw-semibold small">{{ tut.nombre_materia }}</td>
                 <td class="small">Prof. {{ tut.tut_nombre }} {{ tut.tut_apellido }}</td>
                 <td class="small">{{ formatearFecha(tut.fecha) }} <span class="text-muted">({{ horaCorta(tut.hora_inicio) }})</span></td>
+                <td>
+                  <span class="badge px-2 py-1" :class="claseNivel(tut.nivel_academico)">{{ textoNivel(tut.nivel_academico) }}</span>
+                </td>
                 <td class="text-end pe-4">
                   <span class="badge rounded-pill px-3 py-1 text-capitalize" :class="claseEstado(tut.estado)">{{ tut.estado }}</span>
+                </td>
+                <td class="text-end pe-4">
+                  <div class="btn-group" role="group">
+                    <a v-if="tut.estado === 'pendiente'" :href="accionUrl(tut, 'confirmada')"
+                       class="btn btn-sm btn-outline-success btn-icon" title="Aceptar y confirmar sesión">
+                      <i class="bi bi-check-lg"></i>
+                    </a>
+                    <a v-if="tut.estado === 'confirmada'" :href="accionUrl(tut, 'en_proceso')"
+                       class="btn btn-sm btn-outline-indigo btn-icon" title="Iniciar sesión (En Proceso)">
+                      <i class="bi bi-play-circle"></i>
+                    </a>
+                    <a v-if="tut.estado === 'en_proceso'" :href="accionUrl(tut, 'realizada')"
+                       class="btn btn-sm btn-outline-primary btn-icon" title="Marcar como realizada">
+                      <i class="bi bi-check2-all"></i>
+                    </a>
+                    <button v-if="tut.estado !== 'cancelada' && tut.estado !== 'realizada'"
+                            type="button" class="btn btn-sm btn-outline-warning btn-icon" title="Cancelar sesión"
+                            @click="confirmarEliminacion(accionUrl(tut, 'cancelada'), '¿Deseas cancelar esta tutoría?')">
+                      <i class="bi bi-slash-circle"></i>
+                    </button>
+                  </div>
                 </td>
               </tr>
             </TransitionGroup>
@@ -272,6 +430,9 @@ include __DIR__ . '/../layouts/header.php';
       const materiasTop = ref(data.materiasTop || []);
       const nombreAdmin = ref(data.nombreAdmin || 'Administrador');
       const busqueda = ref('');
+      const desgloseNivel = ref(data.desgloseNivel || []);
+      const resumenOfertas = ref(data.resumenOfertas || {});
+      const resumenTurnos = ref(data.resumenTurnos || []);
 
       // Contador animado para las métricas principales
       const animados = {};
@@ -301,19 +462,20 @@ include __DIR__ . '/../layouts/header.php';
         const q = busqueda.value.toLowerCase();
         if (!q) return data.ultimasTutorias || [];
         return (data.ultimasTutorias || []).filter((t) => {
-          return (t.est_nombre + ' ' + t.est_apellido + ' ' + t.nombre_materia + ' ' + t.tut_nombre + ' ' + t.tut_apellido)
+          return (t.est_nombre + ' ' + t.est_apellido + ' ' + t.nombre_materia + ' ' + t.tut_nombre + ' ' + t.tut_apellido + ' ' + (t.nivel_academico || ''))
             .toLowerCase().includes(q);
         });
       });
 
-      const claseEstado = (estado) => {
-        const mapa = {
+const claseEstado = (estado) => {
+        const colores = {
           pendiente:  'bg-warning bg-opacity-25 text-warning-emphasis',
           confirmada: 'bg-info bg-opacity-25 text-info-emphasis',
+          en_proceso: 'bg-indigo bg-opacity-25 text-indigo',
           realizada:  'bg-success bg-opacity-25 text-success-emphasis',
           cancelada:  'bg-danger bg-opacity-25 text-danger-emphasis',
         };
-        return mapa[estado] || 'bg-light text-dark';
+        return colores[estado] || 'bg-light text-dark';
       };
 
       const formatearFecha = (fecha) => {
@@ -324,16 +486,73 @@ include __DIR__ . '/../layouts/header.php';
 
       const horaCorta = (hora) => hora ? String(hora).substring(0, 5) : '';
 
+      const accionUrl = (tut, estado) => {
+        const base = '/controllers/tutorias_cambiar_estado.php?id=' + tut.id_tutoria + '&estado=' + estado;
+        return data.tokenUrl ? base + '&token=' + data.tokenUrl : base;
+      };
+
+      const confirmarEliminacion = (url, mensaje = '¿Estás seguro de eliminar este registro?') => {
+        Swal.fire({
+          title: '¿Confirmar cancelación?',
+          text: mensaje,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d97706',
+          cancelButtonColor: '#64748b',
+          confirmButtonText: 'Sí, cancelar',
+          cancelButtonText: 'Cerrar',
+          customClass: { popup: 'rounded-4' }
+        }).then((result) => {
+          if (result.isConfirmed) window.location.href = url;
+        });
+      };
+
       const maxMaterias = computed(() => {
         return Math.max(1, ...(materiasTop.value.map((m) => Number(m.total_tutorias)) || [0]));
       });
 
       const estiloBarra = (mat) => {
         const pct = Math.round((Number(mat.total_tutorias) / maxMaterias.value) * 100);
-        return `width: ${pct}%; background: linear-gradient(90deg,#3730a3,#4f46e5);`;
+        return `width: ${pct}%; background: linear-gradient(90deg,#1e40af,#3b82f6);`;
       };
 
-      return { resumen, topTutores, materiasTop, nombreAdmin, busqueda, contador, promedioFmt, tutoriasFiltradas, claseEstado, formatearFecha, horaCorta, estiloBarra };
+      // --- Nivel académico ---
+      const nivelCount = (nivel) => {
+        const found = desgloseNivel.value.find((d) => d.nivel_academico === nivel);
+        return found ? Number(found.total) : 0;
+      };
+      const totalTutoriasNivel = computed(() => {
+        return desgloseNivel.value.reduce((sum, d) => sum + Number(d.total), 0);
+      });
+      const nivelPct = (nivel) => {
+        const total = totalTutoriasNivel.value;
+        if (total === 0) return 0;
+        return Math.round((nivelCount(nivel) / total) * 100);
+      };
+      const claseNivel = (nivel) => {
+        const mapa = {
+          pregrado: 'bg-primary text-white',
+          posgrado: 'bg-indigo text-indigo',
+          invierno: 'bg-info text-white',
+          verano:   'bg-warning text-dark',
+        };
+        return mapa[nivel] || 'bg-light text-dark';
+      };
+      const textoNivel = (nivel) => {
+        const mapa = { pregrado: 'Pregrado', posgrado: 'Posgrado', invierno: 'Invierno', verano: 'Verano' };
+        return mapa[nivel] || nivel;
+      };
+
+      // --- Turnos ---
+      const maxTurnos = computed(() => {
+        return Math.max(1, ...(resumenTurnos.value.map((t) => Number(t.total_tutores)) || [0]));
+      });
+      const estiloBarraTurno = (turno) => {
+        const pct = Math.round((Number(turno.total_tutores) / maxTurnos.value) * 100);
+        return `width: ${pct}%; background: linear-gradient(90deg,#1e40af,#3b82f6);`;
+      };
+
+      return { resumen, topTutores, materiasTop, nombreAdmin, busqueda, desgloseNivel, resumenOfertas, resumenTurnos, contador, promedioFmt, tutoriasFiltradas, claseEstado, formatearFecha, horaCorta, accionUrl, confirmarEliminacion, estiloBarra, nivelCount, nivelPct, claseNivel, textoNivel, estiloBarraTurno };
     },
   }).mount('#app-dashboard');
 </script>

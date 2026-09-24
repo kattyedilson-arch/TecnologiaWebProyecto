@@ -3,7 +3,7 @@
 // CONTROLADOR: GESTIÓN DE TUTOR (tutores_disponibilidad.php)
 // ---------------------------------------------------------
 // Página de configuración del docente tutor: administra sus
-// bloques de disponibilidad semanal, las materias que imparte
+// bloques de disponibilidad (materia y turno), las materias que imparte
 // y su perfil profesional (especialidad y biografía).
 //
 // Acceso: el tutor entra sin id (usa su propia sesión);
@@ -14,9 +14,11 @@ require_once __DIR__ . '/../includes/funciones.php';
 require_once __DIR__ . '/../config/conexion.php';
 require_once __DIR__ . '/../models/TutorModel.php';
 require_once __DIR__ . '/../models/MateriaModel.php';
+require_once __DIR__ . '/../models/TurnoModel.php';
 
 $tutorModel = new TutorModel($pdo);
 $materiaModel = new MateriaModel($pdo);
+$turnoModel = new TurnoModel($pdo);
 
 $rolSesion = $_SESSION['rol'] ?? '';
 $idUsuario = $_SESSION['id_usuario'] ?? 0;
@@ -53,7 +55,6 @@ if (!$tutor) {
 }
 
 $errores = [];
-$diasValidos = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
 
 // ===== Procesar acciones POST (agregar horario, materias, perfil) =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -66,29 +67,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = $_POST['accion'] ?? '';
 
     // ---------------------------------------------------------
-    // ACCIÓN 1: Agregar nuevo bloque horario
+    // ACCIÓN 1: Agregar nuevo turno al tutor (SOLO ADMIN)
     // ---------------------------------------------------------
     if ($accion === 'agregar_horario') {
-        $dia = $_POST['dia_semana'] ?? '';
-        $inicio = $_POST['hora_inicio'] ?? '';
-        $fin = $_POST['hora_fin'] ?? '';
-
-        // Validaciones del bloque horario
-        if (empty($dia) || empty($inicio) || empty($fin)) {
-            $errores[] = "Todos los campos de horario son obligatorios.";
-        } elseif (!in_array($dia, $diasValidos, true)) {
-            $errores[] = "El día seleccionado no es válido.";
-        } elseif (!preg_match('/^(2[0-3]|[01][0-9]):[0-5][0-9]$/', $inicio) || !preg_match('/^(2[0-3]|[01][0-9]):[0-5][0-9]$/', $fin)) {
-            $errores[] = "El formato de las horas no es válido (usa HH:MM con horas entre 00 y 23).";
-        } elseif ($inicio >= $fin) {
-            $errores[] = "La hora de fin debe ser mayor a la hora de inicio.";
-        } elseif ($tutorModel->existeConflictoDisponibilidad($idTutor, $dia, $inicio, $fin)) {
-            // Se impide que dos bloques del mismo día se solapen
-            $errores[] = "Ya existe un bloque horario que se solapa con el que intentas agregar.";
+        // Solo el administrador puede agregar turnos a tutores
+        if ($rolSesion !== 'administrador') {
+            $errores[] = "Solo el administrador puede asignar turnos a los tutores.";
         } else {
-            $tutorModel->agregarDisponibilidad($idTutor, $dia, $inicio, $fin);
-            setMensaje('success', 'Bloque horario agregado correctamente.');
-            redirigir($rolSesion === 'tutor' ? 'tutores_disponibilidad.php' : 'tutores_disponibilidad.php?id=' . $idTutor);
+            $idTurno = (int)($_POST['id_turno'] ?? 0);
+            $idMateria = (int)($_POST['id_materia'] ?? 0);
+
+            // Materias que el tutor realmente imparte (solo esas pueden usarse)
+            $materiasTutor = $tutorModel->obtenerMaterias($idTutor);
+            $idsMateriasTutor = array_column($materiasTutor, 'id_materia');
+
+            // Validaciones
+            if (empty($idTurno) || empty($idMateria)) {
+                $errores[] = "Todos los campos de horario (turno y materia) son obligatorios.";
+            } elseif (!$turnoModel->obtenerPorId($idTurno)) {
+                $errores[] = "El turno seleccionado no es válido.";
+            } elseif (!in_array($idMateria, $idsMateriasTutor, true)) {
+                $errores[] = "Debes elegir una de las materias que imparte el tutor.";
+            } elseif ($tutorModel->existeConflictoDisponibilidad($idTutor, $idTurno, $idMateria)) {
+                $errores[] = "El tutor ya tiene asignado ese turno para esa materia.";
+            } else {
+                $tutorModel->agregarDisponibilidad($idTutor, $idTurno, $idMateria);
+                setMensaje('success', 'Turno asignado correctamente al tutor.');
+                redirigir('tutores_disponibilidad.php?id=' . $idTutor);
+            }
         }
     }
 
@@ -99,12 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $materiasSeleccionadas = $_POST['materias'] ?? [];
 
         // Solo se guardan las materias que existan realmente en la BD
-        $idsValidos = [];
-        foreach ((array)$materiasSeleccionadas as $idMateria) {
-            if ($materiaModel->obtenerPorId((int)$idMateria)) {
-                $idsValidos[] = (int)$idMateria;
-            }
-        }
+        $idsValidos = array_column($materiaModel->obtenerExistentes($materiasSeleccionadas), 'id_materia');
 
         $tutorModel->asignarMaterias($idTutor, $idsValidos);
         setMensaje('success', 'Materias asignadas actualizadas con éxito.');
@@ -134,19 +135,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// ===== Eliminar un horario (GET con token de seguridad) =====
-// El enlace de la papelera pasa ?eliminar_horario=ID&token=...
+// ===== Eliminar un turno asignado (GET con token de seguridad, SOLO ADMIN) =====
 if (isset($_GET['eliminar_horario'])) {
-    // Protección CSRF antes de borrar el bloque
+    if ($rolSesion !== 'administrador') {
+        setMensaje('danger', 'Solo el administrador puede eliminar turnos.');
+        redirigir('tutores_disponibilidad.php?id=' . $idTutor);
+    }
+    // Protección CSRF antes de borrar
     if (!verificarTokenCsrf()) {
         setMensaje('danger', 'La solicitud expiró. Vuelve a intentarlo.');
-        redirigir($rolSesion === 'tutor' ? 'tutores_disponibilidad.php' : 'tutores_disponibilidad.php?id=' . $idTutor);
+        redirigir('tutores_disponibilidad.php?id=' . $idTutor);
     }
     $idDisp = (int)$_GET['eliminar_horario'];
-    // eliminarDisponibilidad verifica que el bloque pertenezca a este tutor
     $tutorModel->eliminarDisponibilidad($idDisp, $idTutor);
-    setMensaje('success', 'Bloque horario eliminado.');
-    redirigir($rolSesion === 'tutor' ? 'tutores_disponibilidad.php' : 'tutores_disponibilidad.php?id=' . $idTutor);
+    setMensaje('success', 'Turno eliminado del tutor.');
+    redirigir('tutores_disponibilidad.php?id=' . $idTutor);
 }
 
 // Datos para renderizar la vista
@@ -154,5 +157,6 @@ $materiasAsignadas = $tutorModel->obtenerMaterias($idTutor);
 $idsMateriasAsignadas = array_column($materiasAsignadas, 'id_materia');
 $todasMaterias = $materiaModel->obtenerTodas();
 $disponibilidades = $tutorModel->obtenerDisponibilidad($idTutor);
+$turnos = $turnoModel->obtenerTodos();
 
 require_once __DIR__ . '/../views/tutores/disponibilidad.php';

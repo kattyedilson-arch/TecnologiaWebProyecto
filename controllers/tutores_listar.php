@@ -14,10 +14,11 @@ requerirRol('administrador');
 $tutorModel = new TutorModel($pdo);
 $tutores = $tutorModel->obtenerTodos();
 
-// Reseñas de cada tutor (calificaciones que dejaron los estudiantes)
+// Reseñas de todos los tutores en una sola consulta (evita N+1),
+// agrupadas en PHP para mantener el contrato de la vista.
 $resenasPorTutor = [];
-foreach ($tutores as $t) {
-    $resenasPorTutor[$t['id_tutor']] = $tutorModel->obtenerResenas($t['id_tutor']);
+foreach ($tutorModel->obtenerResenasDeTodos() as $resena) {
+    $resenasPorTutor[$resena['id_tutor']][] = $resena;
 }
 
 require_once __DIR__ . '/../views/tutores/listar.php';

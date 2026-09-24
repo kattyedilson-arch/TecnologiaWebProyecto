@@ -24,7 +24,7 @@ class EstudianteModel
     public function obtenerTodos()
     {
         $sql = "SELECT e.id_estudiante, e.id_usuario, e.id_carrera, e.semestre, e.registro_universitario,
-                       u.nombre, u.apellido, u.correo, u.telefono, u.usuario, u.estado,
+                       u.nombre, u.apellido, u.correo, u.telefono, u.usuario, u.estado, u.foto_perfil,
                        c.nombre_carrera,
                        (SELECT COUNT(*) FROM tutorias t WHERE t.id_estudiante = e.id_estudiante) AS total_tutorias
                 FROM estudiantes e

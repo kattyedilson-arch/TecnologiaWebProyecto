@@ -52,6 +52,7 @@ if ($usuario && $usuario['estado'] === 'activo' && password_verify($contrasenaIn
     $_SESSION['id_usuario'] = $usuario['id_usuario'];
     $_SESSION['nombre'] = $usuario['nombre'];
     $_SESSION['rol'] = $usuario['nombre_rol'];
+    $_SESSION['foto'] = $usuario['foto_perfil'] ?? null; // Foto de perfil para el navbar
 
     // Registrar acceso exitoso (auditoría: usuario, IP y resultado)
     $pdo->prepare("INSERT INTO registro_accesos (id_usuario, ip_origen, resultado) VALUES (?, ?, 'exitoso')")

@@ -32,7 +32,7 @@ $totalImpartidas = count(array_filter($materias, fn($m) => $m['total_tutores'] >
         <i class="bi bi-mortarboard"></i>
         <span>Ver Carreras</span>
       </a>
-      <a href="materias_crear.php" class="btn btn-warning text-dark fw-bold d-flex align-items-center gap-2 shadow-sm px-3 py-2 rounded-3">
+      <a href="materias_crear.php" class="btn btn-primary fw-bold d-flex align-items-center gap-2 shadow-sm px-3 py-2 rounded-3" style="border:1px solid rgba(255,255,255,.5);">
         <i class="bi bi-plus-circle-fill"></i>
         <span>Nueva Materia</span>
       </a>

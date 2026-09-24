@@ -62,9 +62,12 @@ foreach ($materiasTop as $m) { $maxMaterias = max($maxMaterias, (int)$m['total_t
   <style>
     [v-cloak] { display: none !important; }
     :root {
-      --upds-blue: #223B87;
+      --upds-blue: #1e40af;
       --upds-blue-dark: #1a2c6b;
       --upds-blue-bright: #2f4ba7;
+      --upds-celeste: #48A4E0;
+      --upds-celeste-dark: #3B8AC0;
+      --upds-celeste-light: #87CEEB;
       --upds-bg: #f4f5f7;
       --upds-ink: #1a1a1a;
       --upds-gray: #5f6b85;
@@ -85,11 +88,11 @@ foreach ($materiasTop as $m) { $maxMaterias = max($maxMaterias, (int)$m['total_t
     .top-bar-inner .logo-area { display: flex; align-items: center; gap: .7rem; }
     .brand-logo {
       width: 52px; height: 52px; border-radius: 12px;
-      background: linear-gradient(135deg, #2f4ba7, #223B87);
-      display: flex; align-items: center; justify-content: center;
-      color: #fff; font-size: 1.5rem;
+      background: #fff;
+      padding: 3px;
       box-shadow: 0 6px 16px rgba(34,59,135,.35);
     }
+    .brand-logo img { width: 100%; height: 100%; object-fit: contain; border-radius: inherit; }
     .brand-name { font-weight: 800; font-size: 1.1rem; color: var(--upds-blue); letter-spacing: -.3px; line-height: 1.05; }
     .brand-sub { font-size: .66rem; color: var(--upds-gray); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
     .top-nav { display: flex; gap: 1.8rem; align-items: center; }
@@ -105,8 +108,8 @@ foreach ($materiasTop as $m) { $maxMaterias = max($maxMaterias, (int)$m['total_t
     .bottom-bar-inner { max-width: 1200px; margin: 0 auto; padding: 0 1.25rem; height: 58px; display: flex; align-items: center; justify-content: space-between; }
     .sub-nav { display: flex; gap: 1.6rem; align-items: center; }
     .sub-nav a { color: rgba(255,255,255,.9); font-family: 'Encode Sans Condensed', sans-serif; font-weight: 600; font-size: .95rem; letter-spacing: .4px; text-decoration: none; padding: .3rem 0; border-bottom: 2px solid transparent; transition: all .2s; text-transform: uppercase; }
-    .sub-nav a:hover { color: #fff; border-color: #fbbf24; }
-    .sub-nav-right a { color: #fde68a; font-weight: 700; text-decoration: none; font-size: .9rem; }
+    .sub-nav a:hover { color: #fff; border-color: var(--upds-celeste); }
+    .sub-nav-right a { color: #c9e6f7; font-weight: 700; text-decoration: none; font-size: .9rem; }
     .main-header.scrolled .top-bar-inner { height: 0; padding: 0; overflow: hidden; }
     .main-header.scrolled .top-bar { border-bottom: none; }
 
@@ -123,9 +126,9 @@ foreach ($materiasTop as $m) { $maxMaterias = max($maxMaterias, (int)$m['total_t
       min-height: 560px;
       display: flex; align-items: center; justify-content: center; text-align: center;
       background:
-        radial-gradient(circle at 85% 20%, rgba(47,75,167,.35), transparent 45%),
-        radial-gradient(circle at 10% 80%, rgba(34,59,135,.45), transparent 50%),
-        linear-gradient(120deg, #1a2c6b 0%, #223B87 55%, #2f4ba7 100%);
+        radial-gradient(circle at 85% 20%, rgba(72,164,224,.4), transparent 45%),
+        radial-gradient(circle at 10% 80%, rgba(135,206,235,.28), transparent 50%),
+        linear-gradient(120deg, #1e3a8a 0%, #1e40af 55%, #2563eb 100%);
       color: #fff;
       overflow: hidden;
     }
@@ -148,11 +151,11 @@ foreach ($materiasTop as $m) { $maxMaterias = max($maxMaterias, (int)$m['total_t
       margin-bottom: 1.2rem;
     }
     .hero h1 { font-weight: 900; font-size: clamp(2.2rem, 4.6vw, 3.6rem); letter-spacing: -.5px; line-height: 1.1; margin-bottom: 1.1rem; }
-    .hero h1 span { color: #fbbf24; }
+    .hero h1 span { color: var(--upds-celeste-light); }
     .hero p { font-size: 1.1rem; color: rgba(255,255,255,.88); max-width: 640px; margin: 0 auto 2rem; line-height: 1.6; }
     .hero-btns { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
-    .btn-cta { background: #fbbf24; color: #1a2c6b; border: none; border-radius: 8px; padding: .85rem 1.8rem; font-weight: 800; font-size: 1rem; box-shadow: 0 10px 24px rgba(0,0,0,.25); transition: all .2s; text-decoration: none; display: inline-flex; align-items: center; gap: .5rem; }
-    .btn-cta:hover { background: #f59e0b; transform: translateY(-2px); color: #1a2c6b; }
+    .btn-cta { background: var(--upds-celeste); color: #16255c; border: none; border-radius: 8px; padding: .85rem 1.8rem; font-weight: 800; font-size: 1rem; box-shadow: 0 10px 24px rgba(72,164,224,.35); transition: all .2s; text-decoration: none; display: inline-flex; align-items: center; gap: .5rem; }
+    .btn-cta:hover { background: var(--upds-celeste-dark); transform: translateY(-2px); color: #16255c; }
     .btn-outline-light { border: 1px solid rgba(255,255,255,.5); color: #fff; border-radius: 8px; padding: .85rem 1.8rem; font-weight: 700; transition: all .2s; text-decoration: none; display: inline-flex; align-items: center; gap: .5rem; background: transparent; }
     .btn-outline-light:hover { background: rgba(255,255,255,.12); color: #fff; }
 
@@ -168,10 +171,10 @@ foreach ($materiasTop as $m) { $maxMaterias = max($maxMaterias, (int)$m['total_t
 
     .card-upds { background: #fff; border: 1px solid #e7e9ef; border-radius: 14px; transition: all .25s; overflow: hidden; }
     .card-upds:hover { transform: translateY(-5px); box-shadow: 0 18px 40px rgba(34,59,135,.12); border-color: #d3d9ea; }
-    .academia-top { height: 7px; border-radius: 14px 14px 0 0; background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+    .academia-top { height: 7px; border-radius: 14px 14px 0 0; background: linear-gradient(90deg, var(--upds-celeste), var(--upds-celeste-dark)); }
     .academia-icon { width: 54px; height: 54px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; background: rgba(34,59,135,.08); color: var(--upds-blue); }
 
-    .servicio-icon { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; color: #fff; background: linear-gradient(135deg, #2f4ba7, #223B87); box-shadow: 0 8px 18px rgba(34,59,135,.3); }
+    .servicio-icon { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; color: #fff; background: linear-gradient(135deg, #2563eb, #1e40af); box-shadow: 0 8px 18px rgba(30,64,175,.3); }
 
     /* Por qué elegir UPDS */
     .why-check { color: var(--upds-blue); font-size: 1.5rem; margin-top: .15rem; }
@@ -179,15 +182,15 @@ foreach ($materiasTop as $m) { $maxMaterias = max($maxMaterias, (int)$m['total_t
     .why-box .btn-cta { width: 100%; justify-content: center; }
 
     /* Tutores + estrellas */
-    .avatar-circle { width: 66px; height: 66px; border-radius: 50%; background: linear-gradient(135deg, #2f4ba7, #223B87); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.3rem; font-family: 'Encode Sans Condensed', sans-serif; margin: 0 auto 1rem; box-shadow: 0 8px 20px rgba(34,59,135,.3); }
-    .stars { color: #f59e0b; }
+    .avatar-circle { width: 66px; height: 66px; border-radius: 50%; background: linear-gradient(135deg, #2563eb, #1e40af); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.3rem; font-family: 'Encode Sans Condensed', sans-serif; margin: 0 auto 1rem; box-shadow: 0 8px 20px rgba(30,64,175,.3); }
+    .stars { color: var(--upds-celeste); }
 
     /* Testimonios */
     .testimonial-card { background: #fff; border: 1px solid #e7e9ef; border-radius: 16px; }
     .testimonial-card blockquote { color: #45537a; font-size: .95rem; }
 
     /* ============ CTA FINAL ============ */
-    .cta-band { background: linear-gradient(120deg, #1a2c6b, #223B87 60%, #2f4ba7); position: relative; overflow: hidden; }
+    .cta-band { background: linear-gradient(120deg, #1e3a8a, #1e40af 60%, #2563eb); position: relative; overflow: hidden; }
     .cta-band::before { content: ''; position: absolute; top: -80px; right: -80px; width: 260px; height: 260px; border-radius: 50%; background: rgba(255,255,255,.06); }
 
     /* ============ FOOTER ============ */
@@ -205,7 +208,7 @@ foreach ($materiasTop as $m) { $maxMaterias = max($maxMaterias, (int)$m['total_t
     .reveal.visible { opacity: 1; transform: translateY(0); }
 
     .progress { height: 9px; border-radius: 8px; background: #edf0f7; }
-    .progress-bar { border-radius: 8px; background: linear-gradient(90deg, #2f4ba7, #223B87); }
+    .progress-bar { border-radius: 8px; background: linear-gradient(90deg, #2563eb, #1e40af); }
 
     /* Móvil */
     @media (max-width: 991px) {
@@ -223,7 +226,7 @@ foreach ($materiasTop as $m) { $maxMaterias = max($maxMaterias, (int)$m['total_t
   <div class="top-bar">
     <div class="top-bar-inner">
       <a class="logo-area text-decoration-none" href="/">
-        <span class="brand-logo"><i class="fa-solid fa-graduation-cap"></i></span>
+        <span class="brand-logo"><img src="/assets/img/upds-logo.png" alt="Logo UPDS"></span>
         <span>
           <span class="brand-name d-block">Tutorías UPDS</span>
           <span class="brand-sub">Apoyo Académico</span>
@@ -264,7 +267,7 @@ foreach ($materiasTop as $m) { $maxMaterias = max($maxMaterias, (int)$m['total_t
   <a href="#beneficios" @click="menuAbierto=false">Servicios</a>
   <a href="#tutores" @click="menuAbierto=false">Tutores</a>
   <a href="#porque" @click="menuAbierto=false">Nosotros</a>
-  <a href="/views/login/login.php" style="color:#223B87; font-weight:800;">Acceder <i class="fa-solid fa-right-to-bracket"></i></a>
+  <a href="/views/login/login.php" style="color:#1e40af; font-weight:800;">Acceder <i class="fa-solid fa-right-to-bracket"></i></a>
 </div>
 
 <!-- ============ HERO ============ -->
@@ -431,7 +434,7 @@ foreach ($materiasTop as $m) { $maxMaterias = max($maxMaterias, (int)$m['total_t
           <h6 class="fw-bold mb-1">Prof. {{ tut.nombre }} {{ tut.apellido }}</h6>
           <div class="text-muted small mb-2">{{ tut.especialidad || 'Docencia general' }}</div>
           <div class="stars mb-1">
-            <i v-for="n in 5" :key="n" class="fa-solid" :class="n <= Math.round(Number(tut.promedio)) ? 'fa-star' : 'fa-star-o'" style="color:#f59e0b;"></i>
+            <i v-for="n in 5" :key="n" class="fa-solid" :class="n <= Math.round(Number(tut.promedio)) ? 'fa-star' : 'fa-star-o'" style="color:#48A4E0;"></i>
             <span class="text-dark fw-bold ms-1">{{ Number(tut.promedio).toFixed(2) }}</span>
           </div>
           <div class="text-muted" style="font-size:.78rem;">
@@ -476,7 +479,7 @@ foreach ($materiasTop as $m) { $maxMaterias = max($maxMaterias, (int)$m['total_t
 <!-- ============ CTA ============ -->
 <section class="cta-band py-5 text-center text-white">
   <div class="container py-4 position-relative" style="z-index:1;">
-    <div class="brand-logo mx-auto mb-3" style="width:64px; height:64px; font-size:1.7rem;"><i class="fa-solid fa-mortarboard"></i></div>
+    <div class="brand-logo mx-auto mb-3" style="width:64px; height:64px;"><img src="/assets/img/upds-logo.png" alt="Logo UPDS"></div>
     <h2 class="fw-bold mb-2" style="font-family:'Encode Sans Condensed',sans-serif; font-size:clamp(1.8rem,3vw,2.6rem);">¿Listo para mejorar tus notas?</h2>
     <p class="mb-4" style="color:rgba(255,255,255,.85); max-width:560px; margin-left:auto; margin-right:auto;">Solicita tu primera tutoría hoy y da el primer paso hacia un mejor rendimiento académico.</p>
     <a href="/views/login/login.php" class="btn-cta btn-lg"><i class="fa-solid fa-arrow-right me-1"></i>Empezar ahora</a>
@@ -489,7 +492,7 @@ foreach ($materiasTop as $m) { $maxMaterias = max($maxMaterias, (int)$m['total_t
     <div class="row g-4 pb-4">
       <div class="col-lg-4">
         <div class="d-flex align-items-center gap-2 mb-3">
-          <span class="brand-logo" style="height:100%;"><i class="fa-solid fa-graduation-cap"></i></span>
+          <span class="brand-logo" style="height:100%;"><img src="/assets/img/upds-logo.png" alt="Logo UPDS"></span>
           <span class="fw-bold fs-4" style="font-family:'Encode Sans Condensed',sans-serif;">UNIVERSIDAD PRIVADA<br>DOMINGO SAVIO</span>
         </div>
         <p class="small" style="max-width:300px;">Sistema Web de Apoyo Académico para Tutorías. Profesionales más humanos, con un futuro más prometedor.</p>

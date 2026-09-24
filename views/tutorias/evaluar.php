@@ -70,6 +70,29 @@ $comentarioActual = $tutoria['ev_comentario'] ?? '';
           <div class="text-muted">Horario</div>
           <div class="fw-semibold text-dark"><?= substr($tutoria['hora_inicio'], 0, 5) ?> - <?= substr($tutoria['hora_fin'], 0, 5) ?></div>
         </div>
+        <div class="col-md-6">
+          <div class="text-muted">Nivel Académico</div>
+          <div class="fw-semibold text-dark">
+            <?php
+              $badgeNivel = 'bg-primary text-white';
+              $textoNivel = 'Pregrado';
+              if (($tutoria['nivel_academico'] ?? 'pregrado') === 'posgrado') {
+                $badgeNivel = 'bg-indigo text-indigo border border-indigo-subtle';
+                $textoNivel = 'Posgrado';
+              } elseif (($tutoria['nivel_academico'] ?? 'pregrado') === 'invierno') {
+                $badgeNivel = 'bg-info text-white';
+                $textoNivel = 'Invierno';
+              } elseif (($tutoria['nivel_academico'] ?? 'pregrado') === 'verano') {
+                $badgeNivel = 'bg-warning text-dark';
+                $textoNivel = 'Verano';
+              } elseif (!in_array(($tutoria['nivel_academico'] ?? 'pregrado'), ['pregrado', 'posgrado', 'invierno', 'verano'], true)) {
+                $badgeNivel = 'bg-secondary text-white';
+                $textoNivel = htmlspecialchars($tutoria['nivel_academico']);
+              }
+            ?>
+            <span class="badge <?= $badgeNivel ?> px-2 py-1"><?= $textoNivel ?></span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -129,7 +152,7 @@ $comentarioActual = $tutoria['ev_comentario'] ?? '';
   .star-rating input:checked ~ label,
   .star-rating label:hover,
   .star-rating label:hover ~ label {
-    color: #f59e0b;
+    color: #48A4E0;
   }
 </style>
 

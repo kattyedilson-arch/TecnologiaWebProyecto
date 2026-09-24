@@ -35,7 +35,7 @@ $totalHorarios = array_sum(array_column($tutores, 'total_horarios'));
       </h2>
       <p class="text-white-50 mb-0">Cuerpo docente capacitado para brindar asesorías y reforzamiento académico.</p>
     </div>
-    <a href="usuarios_crear.php" class="btn btn-warning text-dark fw-bold d-flex align-items-center gap-2 shadow-sm px-3 py-2 rounded-3">
+    <a href="usuarios_crear.php" class="btn btn-primary fw-bold d-flex align-items-center gap-2 shadow-sm px-3 py-2 rounded-3" style="border:1px solid rgba(255,255,255,.5);">
       <i class="bi bi-person-plus-fill"></i>
       <span>Nuevo Tutor</span>
     </a>
@@ -71,7 +71,7 @@ $totalHorarios = array_sum(array_column($tutores, 'total_horarios'));
         <div class="stat-ico text-ok"><i class="bi bi-clock-history"></i></div>
         <div>
           <h4 class="fw-bold mb-0 text-dark"><?= $totalHorarios ?></h4>
-          <small class="text-muted">Bloques semanales</small>
+          <small class="text-muted">Turnos asignados</small>
         </div>
       </div>
     </div>
@@ -105,7 +105,7 @@ $totalHorarios = array_sum(array_column($tutores, 'total_horarios'));
           <tr>
             <td class="ps-4">
               <div class="d-flex align-items-center gap-3">
-                <div class="avatar-md" style="background:linear-gradient(135deg,#223B87,#2f4ba7);"><?= iniciales($t['nombre'], $t['apellido']) ?></div>
+<?= avatarHTML($t['foto_perfil'] ?? '', iniciales($t['nombre'], $t['apellido']), 'avatar-md', 'background:linear-gradient(135deg,#1e40af,#2563eb);') ?>
                 <div>
                   <div class="fw-bold text-dark">Prof. <?= htmlspecialchars($t['nombre'] . ' ' . $t['apellido']) ?></div>
                   <small class="text-muted"><i class="bi bi-person me-1"></i><?= htmlspecialchars($t['usuario']) ?></small>
@@ -186,7 +186,7 @@ $totalHorarios = array_sum(array_column($tutores, 'total_horarios'));
         <div class="modal-header border-0 pb-0">
           <div>
             <div class="d-flex align-items-center gap-3">
-              <div class="avatar-md" style="background:linear-gradient(135deg,#223B87,#2f4ba7);"><?= iniciales($t['nombre'], $t['apellido']) ?></div>
+              <?= avatarHTML($t['foto_perfil'] ?? '', iniciales($t['nombre'], $t['apellido']), 'avatar-md', 'background:linear-gradient(135deg,#1e40af,#2563eb);') ?>
               <div>
                 <h5 class="fw-bold mb-1 text-dark">Prof. <?= htmlspecialchars($t['nombre'] . ' ' . $t['apellido']) ?></h5>
                 <div class="text-muted small"><?= $totResenas = count($resenasTutor) ?> reseña(s) recibida(s)</div>

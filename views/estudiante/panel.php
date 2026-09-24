@@ -62,6 +62,7 @@ $misTutorias = $tutoriaModel->obtenerPorEstudiante($idEstudiante);
 
 $pendientes = count(array_filter($misTutorias, fn($t) => $t['estado'] === 'pendiente'));
 $confirmadas = count(array_filter($misTutorias, fn($t) => $t['estado'] === 'confirmada'));
+$enProceso = count(array_filter($misTutorias, fn($t) => $t['estado'] === 'en_proceso'));
 $realizadas = count(array_filter($misTutorias, fn($t) => $t['estado'] === 'realizada'));
 $canceladas = count(array_filter($misTutorias, fn($t) => $t['estado'] === 'cancelada'));
 
@@ -75,7 +76,7 @@ include __DIR__ . '/../layouts/header.php';
     <div class="hero-band p-4 p-md-4 mb-3">
       <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
         <div class="d-flex align-items-center gap-3">
-          <div class="avatar-lg d-none d-sm-flex"><?= strtoupper(mb_substr($_SESSION['nombre'] ?? 'E', 0, 1)) ?></div>
+          <?= avatarHTML($_SESSION['foto'] ?? '', strtoupper(mb_substr($_SESSION['nombre'] ?? 'E', 0, 1)), 'avatar-lg d-none d-sm-flex') ?>
           <div>
             <div class="d-flex align-items-center gap-2 mb-1">
               <span class="badge text-bg-light text-dark border px-3 py-1" style="font-size:.68rem; letter-spacing:.6px; text-transform:uppercase;">
@@ -94,7 +95,7 @@ include __DIR__ . '/../layouts/header.php';
             </p>
           </div>
         </div>
-        <a href="/controllers/tutorias_solicitar.php" class="btn btn-warning text-dark fw-bold d-flex align-items-center gap-2 shadow-sm">
+        <a href="/controllers/tutorias_solicitar.php" class="btn btn-primary fw-bold d-flex align-items-center gap-2 shadow-sm" style="border:1px solid rgba(255,255,255,.5);">
           <i class="bi bi-calendar-plus-fill"></i>
           <span>Solicitar Nueva Tutoría</span>
         </a>
@@ -103,16 +104,16 @@ include __DIR__ . '/../layouts/header.php';
   </div>
 
   <!-- Métricas en vivo -->
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md">
     <div class="card card-custom stat-card p-3">
       <div class="d-flex align-items-center gap-3">
         <div class="stat-ico bg-warning bg-opacity-25 text-warning"><i class="bi bi-hourglass-split"></i></div>
         <div><h4 class="fw-bold mb-0 text-warning"><?= $pendientes ?></h4></div>
       </div>
-      <small class="text-muted">En Espera</small>
+      <small class="text-muted">Pendientes</small>
     </div>
   </div>
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md">
     <div class="card card-custom stat-card p-3">
       <div class="d-flex align-items-center gap-3">
         <div class="stat-ico bg-info bg-opacity-10 text-info"><i class="bi bi-calendar-check"></i></div>
@@ -121,7 +122,16 @@ include __DIR__ . '/../layouts/header.php';
       <small class="text-muted">Confirmadas</small>
     </div>
   </div>
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md">
+    <div class="card card-custom stat-card p-3">
+      <div class="d-flex align-items-center gap-3">
+        <div class="stat-ico bg-indigo bg-opacity-10 text-indigo"><i class="bi bi-play-circle"></i></div>
+        <div><h4 class="fw-bold mb-0 text-indigo"><?= $enProceso ?></h4></div>
+      </div>
+      <small class="text-muted">En Proceso</small>
+    </div>
+  </div>
+  <div class="col-6 col-md">
     <div class="card card-custom stat-card p-3">
       <div class="d-flex align-items-center gap-3">
         <div class="stat-ico bg-success bg-opacity-10 text-success"><i class="bi bi-check2-circle"></i></div>
@@ -130,7 +140,7 @@ include __DIR__ . '/../layouts/header.php';
       <small class="text-muted">Realizadas</small>
     </div>
   </div>
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md">
     <div class="card card-custom stat-card p-3">
       <div class="d-flex align-items-center gap-3">
         <div class="stat-ico bg-danger bg-opacity-10 text-danger"><i class="bi bi-x-circle"></i></div>
@@ -158,6 +168,7 @@ include __DIR__ . '/../layouts/header.php';
               <th>Materia</th>
               <th>Docente Tutor</th>
               <th>Modalidad</th>
+              <th>Tipo</th>
               <th>Estado</th>
               <th class="text-end pe-4">Acciones</th>
             </tr>
@@ -167,6 +178,7 @@ include __DIR__ . '/../layouts/header.php';
               <?php
                 $badgeEstado = 'bg-warning text-dark';
                 if ($t['estado'] === 'confirmada') $badgeEstado = 'bg-info text-white';
+                if ($t['estado'] === 'en_proceso') $badgeEstado = 'bg-indigo text-white';
                 if ($t['estado'] === 'realizada') $badgeEstado = 'bg-success text-white';
                 if ($t['estado'] === 'cancelada') $badgeEstado = 'bg-danger text-white';
               ?>
@@ -181,7 +193,7 @@ include __DIR__ . '/../layouts/header.php';
                 </td>
                 <td>
                   <div class="d-flex align-items-center gap-2">
-                    <div class="avatar-md" style="width:34px; height:34px; font-size:.72rem;"><?= iniciales($t['tut_nombre'] ?? '', $t['tut_apellido'] ?? '') ?></div>
+                    <?= avatarHTML($t['tut_foto'] ?? '', iniciales($t['tut_nombre'] ?? '', $t['tut_apellido'] ?? ''), 'avatar-md', 'width:34px; height:34px; font-size:.72rem;') ?>
                     <div>
                       <div class="fw-medium text-dark">Prof. <?= htmlspecialchars($t['tut_nombre'] . ' ' . $t['tut_apellido']) ?></div>
                       <small class="text-muted"><?= htmlspecialchars($t['tut_correo']) ?></small>
@@ -195,6 +207,26 @@ include __DIR__ . '/../layouts/header.php';
                   <?php endif; ?>
                 </td>
                 <td>
+                  <?php
+                    $badgeNivel = 'bg-primary text-white';
+                    $textoNivel = 'Pregrado';
+                    if (($t['nivel_academico'] ?? 'pregrado') === 'posgrado') {
+                      $badgeNivel = 'bg-indigo text-indigo';
+                      $textoNivel = 'Posgrado';
+                    } elseif (($t['nivel_academico'] ?? 'pregrado') === 'invierno') {
+                      $badgeNivel = 'bg-info text-white';
+                      $textoNivel = 'Invierno';
+                    } elseif (($t['nivel_academico'] ?? 'pregrado') === 'verano') {
+                      $badgeNivel = 'bg-warning text-dark';
+                      $textoNivel = 'Verano';
+                    } elseif (!in_array(($t['nivel_academico'] ?? 'pregrado'), ['pregrado', 'posgrado', 'invierno', 'verano'], true)) {
+                      $badgeNivel = 'bg-secondary text-white';
+                      $textoNivel = htmlspecialchars($t['nivel_academico']);
+                    }
+                  ?>
+                  <span class="badge <?= $badgeNivel ?>"><?= $textoNivel ?></span>
+                </td>
+                <td>
                   <span class="badge rounded-pill px-3 py-1 <?= $badgeEstado ?>"><?= ucfirst($t['estado']) ?></span>
                   <?php if (!empty($t['calificacion'])): ?>
                     <div class="text-warning small mt-1">
@@ -206,13 +238,13 @@ include __DIR__ . '/../layouts/header.php';
                 </td>
                 <td class="text-end pe-4">
                   <div class="btn-group" role="group">
-                    <?php if ($t['estado'] === 'pendiente'): ?>
+                    <?php if ($t['estado'] === 'pendiente' || $t['estado'] === 'confirmada'): ?>
                       <button type="button" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
                               onclick="confirmarEliminacion('/controllers/tutorias_cambiar_estado.php?id=<?= $t['id_tutoria'] ?>&estado=cancelada&token=<?= tokenCsrfUrl() ?>', '¿Cancelar tu solicitud de tutoría?')">
                         <i class="bi bi-x-circle"></i> Cancelar Solicitud
                       </button>
                     <?php elseif ($t['estado'] === 'realizada' && empty($t['calificacion'])): ?>
-                      <a href="/controllers/tutorias_evaluar.php?id=<?= $t['id_tutoria'] ?>" class="btn btn-sm btn-warning text-dark d-flex align-items-center gap-1">
+                      <a href="/controllers/tutorias_evaluar.php?id=<?= $t['id_tutoria'] ?>" class="btn btn-sm btn-primary d-flex align-items-center gap-1">
                         <i class="bi bi-star-fill"></i> Evaluar Sesión
                       </a>
                     <?php endif; ?>
@@ -222,7 +254,7 @@ include __DIR__ . '/../layouts/header.php';
             <?php endforeach; ?>
             <?php if (empty($misTutorias)): ?>
               <tr>
-                <td colspan="6" class="text-center py-5 text-muted">
+                <td colspan="7" class="text-center py-5 text-muted">
                   <i class="bi bi-calendar-x fs-1 d-block mb-2 text-secondary"></i>
                   No has solicitado tutorías todavía. ¡Aprovecha el apoyo académico UPDS!
                 </td>

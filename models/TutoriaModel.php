@@ -84,7 +84,7 @@ class TutoriaModel
     public function obtenerPorEstudiante($id_estudiante)
     {
         $sql = "SELECT tu.*,
-                       ut.nombre AS tut_nombre, ut.apellido AS tut_apellido, ut.correo AS tut_correo,
+                       ut.nombre AS tut_nombre, ut.apellido AS tut_apellido, ut.correo AS tut_correo, ut.foto_perfil AS tut_foto,
                        m.nombre_materia, c.nombre_carrera,
                        ev.calificacion, ev.comentario AS ev_comentario
                 FROM tutorias tu
@@ -108,7 +108,7 @@ class TutoriaModel
     public function obtenerPorTutor($id_tutor)
     {
         $sql = "SELECT tu.*,
-                       ue.nombre AS est_nombre, ue.apellido AS est_apellido, ue.correo AS est_correo,
+                       ue.nombre AS est_nombre, ue.apellido AS est_apellido, ue.correo AS est_correo, ue.foto_perfil AS est_foto,
                        m.nombre_materia, c.nombre_carrera,
                        ev.calificacion, ev.comentario AS ev_comentario
                 FROM tutorias tu
@@ -126,13 +126,13 @@ class TutoriaModel
 
     /**
      * Crea una nueva tutoria siempre con estado 'pendiente'.
-     * @param array $datos id_estudiante, id_tutor, id_materia, fecha, hora_inicio, hora_fin, modalidad, lugar_o_enlace, observaciones
+     * @param array $datos id_estudiante, id_tutor, id_materia, fecha, hora_inicio, hora_fin, modalidad, nivel_academico, lugar_o_enlace, observaciones
      * @return bool True si la inserción fue exitosa
      */
     public function crear($datos)
     {
-        $sql = "INSERT INTO tutorias (id_estudiante, id_tutor, id_materia, fecha, hora_inicio, hora_fin, modalidad, lugar_o_enlace, estado, observaciones)
-                VALUES (:id_estudiante, :id_tutor, :id_materia, :fecha, :hora_inicio, :hora_fin, :modalidad, :lugar_o_enlace, 'pendiente', :observaciones)";
+        $sql = "INSERT INTO tutorias (id_estudiante, id_tutor, id_materia, fecha, hora_inicio, hora_fin, modalidad, nivel_academico, lugar_o_enlace, estado, observaciones)
+                VALUES (:id_estudiante, :id_tutor, :id_materia, :fecha, :hora_inicio, :hora_fin, :modalidad, :nivel_academico, :lugar_o_enlace, 'pendiente', :observaciones)";
         $stmt = $this->pdo->prepare($sql);
         return $stmt->execute([
             ':id_estudiante'   => $datos['id_estudiante'],
@@ -142,6 +142,7 @@ class TutoriaModel
             ':hora_inicio'     => $datos['hora_inicio'],
             ':hora_fin'        => $datos['hora_fin'],
             ':modalidad'       => $datos['modalidad'] ?? 'presencial',
+            ':nivel_academico' => $datos['nivel_academico'] ?? 'pregrado',
             ':lugar_o_enlace'  => trim($datos['lugar_o_enlace'] ?? ''),
             ':observaciones'   => trim($datos['observaciones'] ?? '')
         ]);
@@ -149,7 +150,7 @@ class TutoriaModel
 
     /**
      * Cambia el estado de la tutoria (y opcionalmente actualiza las observaciones).
-     * Estados válidos: pendiente, confirmada, realizada, cancelada.
+     * Estados válidos: pendiente, confirmada, en_proceso, realizada, cancelada.
      * @param int $id_tutoria Identificador de la tutoría
      * @param string $nuevo_estado Nuevo estado
      * @param string|null $observaciones Observaciones a guardar (null = no tocar)
@@ -191,7 +192,7 @@ class TutoriaModel
                 FROM tutorias
                 WHERE id_tutor = :id_tutor
                   AND fecha = :fecha
-                  AND estado IN ('pendiente', 'confirmada')
+                  AND estado IN ('pendiente', 'confirmada', 'en_proceso')
                   AND (hora_inicio < :fin AND hora_fin > :inicio)";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
@@ -218,7 +219,7 @@ class TutoriaModel
                 FROM tutorias
                 WHERE id_estudiante = :id_estudiante
                   AND fecha = :fecha
-                  AND estado IN ('pendiente', 'confirmada')
+                  AND estado IN ('pendiente', 'confirmada', 'en_proceso')
                   AND (hora_inicio < :fin AND hora_fin > :inicio)";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
@@ -231,39 +232,59 @@ class TutoriaModel
     }
 
     /**
-     * Verifica que el rango solicitado esté DENTRO de un bloque horario
-     * declarado por el tutor en 'disponibilidad_tutor' (mismo día de semana).
-     * @param int $id_tutor Identificador del tutor
-     * @param string $fecha Fecha de la nueva sesión (Y-m-d)
-     * @param string $hora_inicio Hora inicial del nuevo rango
-     * @param string $hora_fin Hora final del nuevo rango
-     * @return bool True si existe un bloque que cubre todo el rango
+     * Indica si el estudiante ya tiene una solicitud/tutoría ACTIVA para una
+     * misma materia (pendiente, confirmada o en proceso), sin importar el mes.
+     * Las canceladas y realizadas no bloquean la inscripción.
+     * @param int $id_estudiante Identificador del estudiante
+     * @param int $id_materia Identificador de la materia
+     * @return bool True si ya existe una solicitud/tutoría activa de esa materia
      */
-    public function disponibilidadCubreHorario($id_tutor, $fecha, $hora_inicio, $hora_fin)
+    public function tieneMateriaActiva($id_estudiante, $id_materia)
     {
-        // Día de la semana en español (igual que el ENUM de disponibilidad_tutor)
-        $diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
-        $dia = $diasSemana[(int)date('w', strtotime($fecha))];
-
         $sql = "SELECT COUNT(*) AS total
-                FROM disponibilidad_tutor
-                WHERE id_tutor = :id_tutor
-                  AND dia_semana = :dia
-                  AND hora_inicio <= :inicio
-                  AND hora_fin >= :fin";
+                FROM tutorias
+                WHERE id_estudiante = :id_estudiante
+                  AND id_materia = :id_materia
+                  AND estado IN ('pendiente', 'confirmada', 'en_proceso')";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
-            ':id_tutor' => $id_tutor,
-            ':dia'      => $dia,
-            ':inicio'   => $hora_inicio,
-            ':fin'      => $hora_fin
+            ':id_estudiante' => $id_estudiante,
+            ':id_materia'    => $id_materia
         ]);
         return (int)$stmt->fetch()['total'] > 0;
     }
 
     /**
+     * Calcula automáticamente la PRÓXIMA fecha disponible para una sesión,
+     * partiendo de hoy (o mañana si el turno ya comenzó) y avanzando día a día.
+     * Reutiliza las validaciones de conflicto de horario del tutor y del
+     * estudiante para devolver el primer día sin cruces.
+     * @param int $id_tutor Identificador del tutor
+     * @param int $id_estudiante Identificador del estudiante
+     * @param string $hora_inicio Hora inicial del turno (H:i:s o H:i)
+     * @param string $hora_fin Hora final del turno (H:i:s o H:i)
+     * @param int $maxDias Máximo de días a la fecha para buscar
+     * @return string|false Fecha 'Y-m-d' libre de conflictos, o false si no hay
+     */
+    public function proximaFechaDisponible($id_tutor, $id_estudiante, $hora_inicio, $hora_fin, $maxDias = 180)
+    {
+        $fecha = date('Y-m-d');
+        if ($hora_inicio <= date('H:i:s')) {
+            $fecha = date('Y-m-d', strtotime($fecha . ' +1 day'));
+        }
+        for ($i = 0; $i < $maxDias; $i++) {
+            if (!$this->existeConflictoHorario($id_tutor, $fecha, $hora_inicio, $hora_fin)
+                && !$this->existeConflictoHorarioEstudiante($id_estudiante, $fecha, $hora_inicio, $hora_fin)) {
+                return $fecha;
+            }
+            $fecha = date('Y-m-d', strtotime($fecha . ' +1 day'));
+        }
+        return false;
+    }
+
+    /**
      * Métricas globales por estado (usadas en el listado de tutorías y dashboard).
-     * @return array Fila con total, pendientes, confirmadas, realizadas y canceladas
+     * @return array Fila con total y contadores por estado incluyendo en_proceso
      */
     public function obtenerMetricasGlobales()
     {
@@ -271,6 +292,7 @@ class TutoriaModel
                     COUNT(*) AS total,
                     SUM(CASE WHEN estado = 'pendiente' THEN 1 ELSE 0 END) AS pendientes,
                     SUM(CASE WHEN estado = 'confirmada' THEN 1 ELSE 0 END) AS confirmadas,
+                    SUM(CASE WHEN estado = 'en_proceso' THEN 1 ELSE 0 END) AS en_proceso,
                     SUM(CASE WHEN estado = 'realizada' THEN 1 ELSE 0 END) AS realizadas,
                     SUM(CASE WHEN estado = 'cancelada' THEN 1 ELSE 0 END) AS canceladas
                 FROM tutorias";

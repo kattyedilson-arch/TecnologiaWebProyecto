@@ -34,7 +34,7 @@ include __DIR__ . '/../layouts/header.php';
       </h2>
       <p class="text-white-50 mb-0">Administra las cuentas de administradores, tutores y estudiantes de la comunidad académica.</p>
     </div>
-    <a href="usuarios_crear.php" class="btn btn-warning text-dark fw-bold d-flex align-items-center gap-2 shadow-sm px-3 py-2 rounded-3">
+    <a href="usuarios_crear.php" class="btn btn-primary fw-bold d-flex align-items-center gap-2 shadow-sm px-3 py-2 rounded-3" style="border:1px solid rgba(255,255,255,.5);">
       <i class="bi bi-person-plus-fill"></i>
       <span>Nuevo Usuario</span>
     </a>
@@ -130,7 +130,7 @@ include __DIR__ . '/../layouts/header.php';
           <tr data-rol="<?= htmlspecialchars($u['nombre_rol']) ?>">
             <td class="ps-4">
               <div class="d-flex align-items-center gap-3">
-                <div class="avatar-md"><?= iniciales($u['nombre'], $u['apellido']) ?></div>
+                <?= avatarHTML($u['foto_perfil'] ?? '', iniciales($u['nombre'], $u['apellido']), 'avatar-md') ?>
                 <div>
                   <div class="fw-bold text-dark"><?= htmlspecialchars($u['nombre'] . ' ' . $u['apellido']) ?></div>
                   <small class="text-muted"><i class="bi bi-person me-1"></i><?= htmlspecialchars($u['usuario']) ?></small>

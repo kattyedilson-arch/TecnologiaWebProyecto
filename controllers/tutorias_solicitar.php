@@ -2,26 +2,28 @@
 // =========================================================
 // CONTROLADOR: SOLICITAR TUTORÍA (tutorias_solicitar.php)
 // ---------------------------------------------------------
-// Pantalla donde el ESTUDIANTE agenda una nueva sesión de
-// tutoría. Valida en servidor: existencia de materia/tutor,
-// que el tutor imparta la materia, fecha no pasada, horas
-// coherentes, URL válida en modalidad virtual y que no exista
-// conflicto de horario con otras sesiones del tutor.
+// Pantalla donde el ESTUDIANTE solicita una nueva sesión de
+// tutoría a partir de los HORARIOS PREESTABLECIDOS por el
+// administrador (ofertas asignadas a un tutor). El estudiante
+// NO elige aula, modalidad ni fecha: solo selecciona la materia
+// y uno de los horarios publicados.
+// El sistema deriva tutor, turno, modalidad y aula desde la oferta elegida,
+// y asigna automáticamente la fecha de la sesión (primer día libre del turno).
 // =========================================================
 require_once __DIR__ . '/../includes/verificar_sesion.php';
 require_once __DIR__ . '/../includes/funciones.php';
 require_once __DIR__ . '/../config/conexion.php';
 require_once __DIR__ . '/../models/TutoriaModel.php';
 require_once __DIR__ . '/../models/MateriaModel.php';
-require_once __DIR__ . '/../models/TutorModel.php';
+require_once __DIR__ . '/../models/OfertaModel.php';
 require_once __DIR__ . '/../models/EstudianteModel.php';
 require_once __DIR__ . '/../models/CarreraModel.php';
+require_once __DIR__ . '/../models/TurnoModel.php';
 
 $idUsuario = $_SESSION['id_usuario'] ?? 0;
 $rolSesion = $_SESSION['rol'] ?? '';
 
 // Solo los estudiantes pueden solicitar tutorías
-// (evita que admin/tutor generen perfiles "fantasma" de estudiante)
 if ($rolSesion !== 'estudiante') {
     setMensaje('danger', 'Solo los estudiantes pueden solicitar tutorías.');
     redirigir($rolSesion === 'tutor' ? '../views/tutor/panel.php' : 'tutorias_listar.php');
@@ -29,7 +31,7 @@ if ($rolSesion !== 'estudiante') {
 
 $estudianteModel = new EstudianteModel($pdo);
 $materiaModel = new MateriaModel($pdo);
-$tutorModel = new TutorModel($pdo);
+$ofertaModel = new OfertaModel($pdo);
 $tutoriaModel = new TutoriaModel($pdo);
 
 // Obtener o crear perfil de estudiante (si aún no tiene ficha académica)
@@ -47,114 +49,80 @@ $errores = [];
 
 // ===== Procesamiento del formulario (POST) =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Protección CSRF: la solicitud debe traer el token de la sesión
+    // Protección CSRF
     if (!verificarTokenCsrf()) {
         setMensaje('danger', 'La solicitud expiró. Vuelve a intentarlo.');
         redirigir('tutorias_solicitar.php');
     }
 
-    $datos = [
-        'id_estudiante'  => $estudiante['id_estudiante'],
-        'id_materia'     => $_POST['id_materia'] ?? '',
-        'id_tutor'       => $_POST['id_tutor'] ?? '',
-        'fecha'          => $_POST['fecha'] ?? '',
-        'hora_inicio'    => $_POST['hora_inicio'] ?? '',
-        'hora_fin'       => $_POST['hora_fin'] ?? '',
-        'modalidad'      => $_POST['modalidad'] ?? '',
-        'lugar_o_enlace' => limpiarTexto($_POST['lugar_o_enlace'] ?? ''),
-        'observaciones'  => trim($_POST['observaciones'] ?? '')
-    ];
+    $idOferta      = (int)($_POST['id_oferta'] ?? 0);
+    $observaciones = trim($_POST['observaciones'] ?? '');
 
     // 1. Campos obligatorios
-    if (in_array('', [$datos['id_materia'], $datos['id_tutor'], $datos['fecha'], $datos['hora_inicio'], $datos['hora_fin'], $datos['modalidad']], true)) {
-        $errores[] = "Todos los campos marcados con asterisco (*) son obligatorios.";
+    if (!$idOferta) {
+        $errores[] = "Debes seleccionar un horario disponible.";
     }
 
-    // 2. Validar que la materia y el tutor existan
-    if ($datos['id_materia'] !== '' && !$materiaModel->obtenerPorId((int)$datos['id_materia'])) {
-        $errores[] = "La materia seleccionada no es válida.";
-    }
-    if ($datos['id_tutor'] !== '' && !$tutorModel->obtenerPorId((int)$datos['id_tutor'])) {
-        $errores[] = "El docente tutor seleccionado no es válido.";
+    // 2. La oferta debe existir, estar asignada y tener tutor
+    $oferta = $idOferta ? $ofertaModel->obtenerPorId($idOferta) : false;
+    if ($oferta) {
+        if ($oferta['estado'] !== 'asignada' || empty($oferta['id_tutor_assigned'])) {
+            $errores[] = "Ese horario ya no está disponible (sin tutor asignado).";
+            $oferta = false;
+        } elseif (!in_array($oferta['id_materia'], array_column($materiaModel->obtenerPorCarrera($estudiante['id_carrera']), 'id_materia'), true)) {
+            $errores[] = "La oferta seleccionada no corresponde a las materias de tu carrera.";
+            $oferta = false;
+        }
+    } elseif (!$errores) {
+        $errores[] = "El horario seleccionado no es válido.";
     }
 
-    // 3. El tutor debe impartir la materia elegida
-    if (!empty($datos['id_materia']) && !empty($datos['id_tutor'])) {
-        $tutoresMateria = $tutorModel->obtenerTutoresPorMateria((int)$datos['id_materia']);
-        $idsValidos = array_column($tutoresMateria, 'id_tutor');
-        if (!in_array((int)$datos['id_tutor'], $idsValidos, true)) {
-            $errores[] = "El docente tutor seleccionado no imparte esa materia.";
+    // 3. Bloquear duplicados: el estudiante NO puede registrar la misma materia dos veces
+    if (empty($errores) && $oferta) {
+        if ($tutoriaModel->tieneMateriaActiva($estudiante['id_estudiante'], $oferta['id_materia'])) {
+            $errores[] = "Ya tienes registrada una solicitud para esta materia. No puedes inscribirte dos veces en la misma materia; cancela la solicitud anterior si deseas cambiarla.";
         }
     }
 
-    // 4. Modalidad válida (presencial o virtual)
-    if (!empty($datos['modalidad']) && !in_array($datos['modalidad'], ['presencial', 'virtual'], true)) {
-        $errores[] = "La modalidad seleccionada no es válida.";
-    }
-
-    // 5. Fecha no puede ser en el pasado
-    if (!empty($datos['fecha'])) {
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $datos['fecha'])) {
-            $errores[] = "El formato de la fecha no es válido.";
-        } elseif ($datos['fecha'] < date('Y-m-d')) {
-            $errores[] = "La fecha de la tutoría no puede ser en el pasado.";
-        } elseif ($datos['fecha'] > date('Y-m-d', strtotime('+180 days'))) {
-            $errores[] = "La fecha de la tutoría no puede exceder los 6 meses de anticipación.";
+    // 4. La fecha de la sesión se asigna automáticamente: el primer día libre
+    //    del turno elegido, sin conflictos de horario del tutor ni del estudiante.
+    $fechaAutom = '';
+    if (empty($errores) && $oferta) {
+        $stmtTurno = $pdo->prepare("SELECT hora_inicio, hora_fin FROM turnos WHERE id_turno = :id");
+        $stmtTurno->execute([':id' => $oferta['id_turno']]);
+        $turno = $stmtTurno->fetch();
+        if ($turno) {
+            $fechaAutom = $tutoriaModel->proximaFechaDisponible($oferta['id_tutor_assigned'], $estudiante['id_estudiante'], $turno['hora_inicio'], $turno['hora_fin']);
+            if (!$fechaAutom) {
+                $errores[] = "No hay fechas disponibles en los próximos 6 meses para este horario. Prueba con otro turno o vuelve más tarde.";
+            }
         }
     }
 
-    // 6. Horarios coherentes (formato HH:MM real y fin posterior)
-    if (!empty($datos['hora_inicio']) && !empty($datos['hora_fin'])) {
-        $regexHora = '/^(2[0-3]|[01][0-9]):[0-5][0-9]$/';
-        if (!preg_match($regexHora, $datos['hora_inicio']) || !preg_match($regexHora, $datos['hora_fin'])) {
-            $errores[] = "El formato de las horas no es válido (usa HH:MM con horas entre 00 y 23).";
-        } elseif ($datos['hora_inicio'] >= $datos['hora_fin']) {
-            $errores[] = "La hora de finalización debe ser posterior a la hora de inicio.";
-        } elseif ($datos['fecha'] === date('Y-m-d') && $datos['hora_inicio'] <= date('H:i')) {
-            $errores[] = "La hora de inicio ya pasó para hoy. Elige una hora futura.";
-        }
-    }
-
-    // 7. Para modalidad virtual el enlace es obligatorio y debe ser URL válida
-    if ($datos['modalidad'] === 'virtual') {
-        if (empty($datos['lugar_o_enlace'])) {
-            $errores[] = "Para tutorías virtuales debes indicar el enlace de la videoconferencia.";
-        } elseif (!validarUrl($datos['lugar_o_enlace'])) {
-            $errores[] = "El enlace de la videoconferencia no es una URL válida (ej: https://meet.google.com/...).";
-        }
-    }
-
-    // 8. Límites de longitud (acordes a las columnas de la BD)
-    if (!empty($datos['lugar_o_enlace']) && mb_strlen($datos['lugar_o_enlace']) > 200) {
-        $errores[] = "El lugar o enlace no puede superar los 200 caracteres.";
-    }
-    if (mb_strlen($datos['observaciones']) > 1000) {
+    // 5. Observaciones con límite de longitud
+    if (mb_strlen($observaciones) > 1000) {
         $errores[] = "Las observaciones no pueden superar los 1000 caracteres.";
     }
 
-    // 9. Evitar solapamiento con otra tutoría activa del mismo tutor
-    if (empty($errores) && !empty($datos['id_tutor']) && !empty($datos['fecha'])) {
-        if ($tutoriaModel->existeConflictoHorario($datos['id_tutor'], $datos['fecha'], $datos['hora_inicio'], $datos['hora_fin'])) {
-            $errores[] = "El docente tutor ya tiene una sesión agendada en ese horario. Por favor elige otro rango.";
-        }
-    }
-
-    // 10. Evitar que el mismo estudiante se doble a sí mismo
-    if (empty($errores) && !empty($datos['fecha'])) {
-        if ($tutoriaModel->existeConflictoHorarioEstudiante($estudiante['id_estudiante'], $datos['fecha'], $datos['hora_inicio'], $datos['hora_fin'])) {
-            $errores[] = "Ya tienes una tutoría agendada en ese horario. Elige otro rango.";
-        }
-    }
-
-    // 11. La sesión debe estar dentro del horario declarado por el tutor
-    if (empty($errores) && !empty($datos['id_tutor']) && !empty($datos['fecha'])) {
-        if (!$tutoriaModel->disponibilidadCubreHorario($datos['id_tutor'], $datos['fecha'], $datos['hora_inicio'], $datos['hora_fin'])) {
-            $errores[] = "El docente tutor no tiene disponibilidad en esa fecha y horario. Revisa sus horarios declarados.";
-        }
-    }
-
     // Si todas las validaciones pasan, se crea la tutoría (estado: pendiente)
-    if (empty($errores)) {
+    if (empty($errores) && $oferta) {
+        $stmtTurno = $pdo->prepare("SELECT hora_inicio, hora_fin FROM turnos WHERE id_turno = :id");
+        $stmtTurno->execute([':id' => $oferta['id_turno']]);
+        $turno = $stmtTurno->fetch();
+
+        $datos = [
+            'id_estudiante'   => $estudiante['id_estudiante'],
+            'id_materia'      => $oferta['id_materia'],
+            'id_tutor'        => $oferta['id_tutor_assigned'],
+            'fecha'           => $fechaAutom,
+            'hora_inicio'     => $turno['hora_inicio'],
+            'hora_fin'        => $turno['hora_fin'],
+            'modalidad'       => $oferta['modalidad'],
+            'nivel_academico' => $oferta['nivel_academico'],
+            'lugar_o_enlace'  => $oferta['lugar_o_enlace'],
+            'observaciones'   => $observaciones
+        ];
+
         try {
             $tutoriaModel->crear($datos);
             setMensaje('success', 'Tu solicitud de tutoría fue enviada correctamente.');
@@ -165,9 +133,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Datos para el formulario: SOLO las materias de la carrera del estudiante
+// Datos para el formulario:
+// - SOLO materias de la carrera del estudiante
+// - Ofertas asignadas (horarios preestablecidos) de esas materias
+// - Los 4 turnos fijos (Mañana/Mediodía/Tarde/Noche) siempre se muestran;
+//   la vista los deshabilita cuando no hay horario publicado+asignado.
 $materias = $materiaModel->obtenerPorCarrera($estudiante['id_carrera']);
-$tutores = $tutorModel->obtenerTutoresConMaterias();
+$turnos = (new TurnoModel($pdo))->obtenerTodos();
+$idsMaterias = array_column($materias, 'id_materia');
+$ofertasDisponibles = [];
+if (!empty($idsMaterias)) {
+    foreach ($ofertaModel->obtenerOfertasEstudiante() as $oferta) {
+        if (in_array($oferta['id_materia'], $idsMaterias, true)) {
+            $ofertasDisponibles[] = $oferta;
+        }
+    }
+}
 $carreraEstudiante = $estudiante['nombre_carrera'] ?? '';
 
 require_once __DIR__ . '/../views/tutorias/solicitar.php';

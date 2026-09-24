@@ -16,7 +16,7 @@ $tutoriaModel = new TutoriaModel($pdo);
 
 // Filtro por estado desde GET (?estado=pendiente, etc.)
 $filtroEstado = $_GET['estado'] ?? null;
-if (!in_array($filtroEstado, ['pendiente', 'confirmada', 'realizada', 'cancelada'])) {
+if (!in_array($filtroEstado, ['pendiente', 'confirmada', 'en_proceso', 'realizada', 'cancelada'])) {
     $filtroEstado = null; // Cualquier otro valor se ignora (se muestran todas)
 }
 

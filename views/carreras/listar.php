@@ -31,7 +31,7 @@ $totalEstud     = array_sum(array_column($carreras, 'total_estudiantes'));
         <i class="bi bi-journal-bookmark"></i>
         <span>Ver Materias</span>
       </a>
-      <a href="carreras_crear.php" class="btn btn-warning text-dark fw-bold d-flex align-items-center gap-2 shadow-sm px-3 py-2 rounded-3">
+      <a href="carreras_crear.php" class="btn btn-primary fw-bold d-flex align-items-center gap-2 shadow-sm px-3 py-2 rounded-3" style="border:1px solid rgba(255,255,255,.5);">
         <i class="bi bi-plus-circle-fill"></i>
         <span>Nueva Carrera</span>
       </a>

@@ -23,7 +23,7 @@ class TutorModel
     public function obtenerTodos()
     {
         $sql = "SELECT t.id_tutor, t.id_usuario, t.especialidad, t.biografia,
-                       u.nombre, u.apellido, u.correo, u.telefono, u.usuario, u.estado,
+                       u.nombre, u.apellido, u.correo, u.telefono, u.usuario, u.estado, u.foto_perfil,
                        (SELECT COUNT(*) FROM tutor_materia tm WHERE tm.id_tutor = t.id_tutor) AS total_materias,
                        (SELECT COUNT(*) FROM disponibilidad_tutor dt WHERE dt.id_tutor = t.id_tutor) AS total_horarios
                 FROM tutores t
@@ -33,15 +33,15 @@ class TutorModel
     }
 
     /**
-     * Reseñas (evaluaciones) recibidas por un tutor: calificación, comentario,
-     * materia y estudiante que la dejó. Ordenadas de la más reciente a la
-     * más antigua.
-     * @param int $id_tutor Identificador del tutor
-     * @return array Reseñas del tutor
+     * Reseñas (evaluaciones) recibidas por TODOS los tutores en una sola
+     * consulta (evita el patrón N+1 al listar tutores). Cada fila incluye
+     * el id_tutor para agruparlas en PHP.
+     * @return array Reseñas de todos los tutores (incluye id_tutor)
      */
-    public function obtenerResenas($id_tutor)
+    public function obtenerResenasDeTodos()
     {
-        $sql = "SELECT ev.calificacion, ev.comentario, ev.fecha_evaluacion,
+        $sql = "SELECT tu.id_tutor,
+                       ev.calificacion, ev.comentario, ev.fecha_evaluacion,
                        m.nombre_materia,
                        ue.nombre AS est_nombre, ue.apellido AS est_apellido
                 FROM evaluaciones_tutoria ev
@@ -49,11 +49,8 @@ class TutorModel
                 INNER JOIN estudiantes e ON tu.id_estudiante = e.id_estudiante
                 INNER JOIN usuarios ue ON e.id_usuario = ue.id_usuario
                 INNER JOIN materias m ON tu.id_materia = m.id_materia
-                WHERE tu.id_tutor = :id_tutor
                 ORDER BY ev.fecha_evaluacion DESC";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([':id_tutor' => $id_tutor]);
-        return $stmt->fetchAll();
+        return $this->pdo->query($sql)->fetchAll();
     }
 
     /**
@@ -164,60 +161,39 @@ class TutorModel
     }
 
     /**
-     * Tutores con la lista de ids de sus materias y sus bloques de
-     * disponibilidad semanal (para el formulario de solicitud).
-     * Añade por tutor los campos extra 'materias_ids' (array de ints)
-     * y 'disponibilidad' (array de bloques [dia_semana, hora_inicio, hora_fin]).
-     * @return array Tutores enriquecidos con materias_ids y disponibilidad
-     */
-    public function obtenerTutoresConMaterias()
-    {
-        $sql = "SELECT t.id_tutor, u.nombre, u.apellido, u.estado, t.especialidad
-                FROM tutores t
-                INNER JOIN usuarios u ON t.id_usuario = u.id_usuario
-                ORDER BY u.nombre ASC";
-        $tutores = $this->pdo->query($sql)->fetchAll();
-
-        foreach ($tutores as $i => $tutor) {
-            $materias = $this->obtenerMaterias($tutor['id_tutor']);
-            $tutores[$i]['materias_ids'] = array_column($materias, 'id_materia');
-            $tutores[$i]['disponibilidad'] = $this->obtenerDisponibilidad($tutor['id_tutor']);
-        }
-
-        return $tutores;
-    }
-
-    /**
-     * Bloques horarios semanales de disponibilidad del tutor, en orden de día/hora.
+     * Bloques de disponibilidad del tutor (materia + turno), en orden de hora.
      * @param int $id_tutor Identificador del tutor
-     * @return array Horarios [dia_semana, hora_inicio, hora_fin, ...]
+     * @return array Horarios [id_materia, nombre_materia, id_turno, nombre_turno, hora_inicio, hora_fin, ...]
      */
     public function obtenerDisponibilidad($id_tutor)
     {
-        $sql = "SELECT * FROM disponibilidad_tutor WHERE id_tutor = :id_tutor ORDER BY 
-                FIELD(dia_semana, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'), hora_inicio ASC";
+        $sql = "SELECT dt.*, m.nombre_materia, t.nombre_turno, t.hora_inicio AS turno_hora_inicio, t.hora_fin AS turno_hora_fin
+                FROM disponibilidad_tutor dt
+                INNER JOIN materias m ON dt.id_materia = m.id_materia
+                INNER JOIN turnos t ON dt.id_turno = t.id_turno
+                WHERE dt.id_tutor = :id_tutor
+                ORDER BY t.hora_inicio ASC";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([':id_tutor' => $id_tutor]);
         return $stmt->fetchAll();
     }
 
     /**
-     * Agrega un nuevo bloque de disponibilidad para el tutor.
+     * Agrega un nuevo bloque de disponibilidad para el tutor, indicando
+     * la materia y el turno fijo asignado.
      * @param int $id_tutor Identificador del tutor
-     * @param string $dia_semana Día de la semana
-     * @param string $hora_inicio Hora de inicio (HH:MM)
-     * @param string $hora_fin Hora de fin (HH:MM)
+     * @param int $id_turno Identificador del turno fijo
+     * @param int $id_materia Materia que se impartirá en el turno
      * @return bool True si la inserción fue exitosa
      */
-    public function agregarDisponibilidad($id_tutor, $dia_semana, $hora_inicio, $hora_fin)
+    public function agregarDisponibilidad($id_tutor, $id_turno, $id_materia)
     {
-        $stmt = $this->pdo->prepare("INSERT INTO disponibilidad_tutor (id_tutor, dia_semana, hora_inicio, hora_fin) 
-                                     VALUES (:id_tutor, :dia, :inicio, :fin)");
+        $stmt = $this->pdo->prepare("INSERT INTO disponibilidad_tutor (id_tutor, id_materia, id_turno) 
+                                     VALUES (:id_tutor, :id_materia, :id_turno)");
         return $stmt->execute([
-            ':id_tutor' => $id_tutor,
-            ':dia'      => $dia_semana,
-            ':inicio'   => $hora_inicio,
-            ':fin'      => $hora_fin
+            ':id_tutor'   => $id_tutor,
+            ':id_materia' => $id_materia,
+            ':id_turno'   => $id_turno
         ]);
     }
 
@@ -237,27 +213,25 @@ class TutorModel
     }
 
     /**
-     * Verifica si el nuevo bloque horario se SOLAPA con otro existente del tutor.
-     * Dos rangos [inicio,fin] se solapan si: inicio_existente < fin_nuevo AND fin_existente > inicio_nuevo.
+     * Verifica si el tutor ya tiene asignado un turno para esa materia.
+     * Un tutor no puede tener el mismo turno dos veces para la misma materia.
      * @param int $id_tutor Identificador del tutor
-     * @param string $dia_semana Día de la semana
-     * @param string $hora_inicio Hora inicial del nuevo bloque
-     * @param string $hora_fin Hora final del nuevo bloque
+     * @param int $id_turno Identificador del turno
+     * @param int $id_materia Identificador de la materia
      * @return bool True si existe conflicto (no se debe guardar)
      */
-    public function existeConflictoDisponibilidad($id_tutor, $dia_semana, $hora_inicio, $hora_fin)
+    public function existeConflictoDisponibilidad($id_tutor, $id_turno, $id_materia)
     {
         $sql = "SELECT COUNT(*) AS total
                 FROM disponibilidad_tutor
                 WHERE id_tutor = :id_tutor
-                  AND dia_semana = :dia
-                  AND (hora_inicio < :fin AND hora_fin > :inicio)";
+                  AND id_turno = :id_turno
+                  AND id_materia = :id_materia";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
-            ':id_tutor' => $id_tutor,
-            ':dia'      => $dia_semana,
-            ':inicio'   => $hora_inicio,
-            ':fin'      => $hora_fin
+            ':id_tutor'   => $id_tutor,
+            ':id_turno'   => $id_turno,
+            ':id_materia' => $id_materia
         ]);
         return (int)$stmt->fetch()['total'] > 0;
     }

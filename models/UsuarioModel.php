@@ -22,7 +22,7 @@ class UsuarioModel
      */
     public function obtenerTodos()
     {
-        $sql = "SELECT u.id_usuario, u.nombre, u.apellido, u.correo, u.usuario,
+        $sql = "SELECT u.id_usuario, u.nombre, u.apellido, u.correo, u.usuario, u.foto_perfil,
                        r.nombre_rol, u.estado, u.fecha_registro
                 FROM usuarios u
                 INNER JOIN roles r ON u.id_rol = r.id_rol
@@ -162,6 +162,21 @@ class UsuarioModel
 
         $stmt = $this->pdo->prepare($sql);
         return $stmt->execute($params);
+    }
+
+    /**
+     * Guarda (o limpia) la ruta de la foto de perfil del usuario.
+     * @param int $id Identificador del usuario
+     * @param string|null $ruta Ruta web de la foto (null para quitarla)
+     * @return bool True si la actualización fue exitosa
+     */
+    public function actualizarFotoPerfil($id, $ruta)
+    {
+        $stmt = $this->pdo->prepare("UPDATE usuarios SET foto_perfil = :foto WHERE id_usuario = :id");
+        return $stmt->execute([
+            ':foto' => $ruta,
+            ':id'   => $id,
+        ]);
     }
 
     /**

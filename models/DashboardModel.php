@@ -33,6 +33,7 @@ class DashboardModel
                     (SELECT COUNT(*) FROM tutorias) AS total_tutorias,
                     (SELECT COUNT(*) FROM tutorias WHERE estado = 'pendiente') AS pendientes,
                     (SELECT COUNT(*) FROM tutorias WHERE estado = 'confirmada') AS confirmadas,
+                    (SELECT COUNT(*) FROM tutorias WHERE estado = 'en_proceso') AS en_proceso,
                     (SELECT COUNT(*) FROM tutorias WHERE estado = 'realizada') AS realizadas,
                     (SELECT COUNT(*) FROM tutorias WHERE estado = 'cancelada') AS canceladas,
                     (SELECT ROUND(AVG(calificacion), 2) FROM evaluaciones_tutoria) AS promedio_evaluaciones,
@@ -50,7 +51,8 @@ class DashboardModel
         $sql = "SELECT tu.*,
                        ue.nombre AS est_nombre, ue.apellido AS est_apellido,
                        ut.nombre AS tut_nombre, ut.apellido AS tut_apellido,
-                       m.nombre_materia, ev.calificacion
+                       m.nombre_materia, ev.calificacion,
+                       tu.nivel_academico
                 FROM tutorias tu
                 INNER JOIN estudiantes e ON tu.id_estudiante = e.id_estudiante
                 INNER JOIN usuarios ue ON e.id_usuario = ue.id_usuario
@@ -109,5 +111,52 @@ class DashboardModel
         $stmt->bindValue(':limite', (int)$limite, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll();
+    }
+
+    /**
+     * Desglose de tutorías por nivel académico (pregrado, posgrado, invierno, verano).
+     * @return array Filas con nivel_academico y total
+     */
+    public function obtenerDesgloseNivelAcademico()
+    {
+        $sql = "SELECT nivel_academico, COUNT(*) AS total
+                FROM tutorias
+                GROUP BY nivel_academico
+                ORDER BY total DESC";
+        return $this->pdo->query($sql)->fetchAll();
+    }
+
+    /**
+     * Resumen de ofertas creadas por el administrador.
+     * @return array Fila con contadores por estado
+     */
+    public function obtenerResumenOfertas()
+    {
+        $sql = "SELECT
+                    (SELECT COUNT(*) FROM ofertas_admin WHERE estado = 'abierta') AS activas,
+                    (SELECT COUNT(*) FROM ofertas_admin WHERE estado = 'cerrada') AS cerradas,
+                    (SELECT COUNT(*) FROM oferta_respuesta WHERE estado = 'aceptada') AS aceptadas,
+                    (SELECT COUNT(*) FROM ofertas_admin o
+                     WHERE o.estado = 'abierta'
+                       AND NOT EXISTS (
+                         SELECT 1 FROM oferta_respuesta r WHERE r.id_oferta = o.id_oferta
+                       )) AS pendientes_respuesta";
+        return $this->pdo->query($sql)->fetch();
+    }
+
+    /**
+     * Resumen de disponibilidad de tutores por turno.
+     * Muestra cuántos tutores tienen disponibilidad en cada turno.
+     * @return array Filas con datos del turno y conteo de tutores
+     */
+    public function obtenerResumenTurnos()
+    {
+        $sql = "SELECT t.id_turno, t.nombre_turno, t.hora_inicio, t.hora_fin,
+                       COUNT(DISTINCT dt.id_tutor) AS total_tutores
+                FROM turnos t
+                LEFT JOIN disponibilidad_tutor dt ON t.id_turno = dt.id_turno
+                GROUP BY t.id_turno, t.nombre_turno, t.hora_inicio, t.hora_fin
+                ORDER BY t.hora_inicio ASC";
+        return $this->pdo->query($sql)->fetchAll();
     }
 }

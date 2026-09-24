@@ -12,6 +12,8 @@ services:
       - DB_NAME=tutorias_db
       - DB_USER=tutorias_user
       - DB_PASS=12345
+      - DB_PERSISTENT=1
+      - DB_PING=1
     depends_on:
       - db
 

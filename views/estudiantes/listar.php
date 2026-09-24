@@ -28,7 +28,7 @@ $totalActivos = count(array_filter($estudiantes, fn($e) => $e['estado'] === 'act
       </h2>
       <p class="text-white-50 mb-0">Listado de alumnos habilitados para solicitar tutorías académicas.</p>
     </div>
-    <a href="usuarios_crear.php" class="btn btn-warning text-dark fw-bold d-flex align-items-center gap-2 shadow-sm px-3 py-2 rounded-3">
+    <a href="usuarios_crear.php" class="btn btn-primary fw-bold d-flex align-items-center gap-2 shadow-sm px-3 py-2 rounded-3" style="border:1px solid rgba(255,255,255,.5);">
       <i class="bi bi-person-plus-fill"></i>
       <span>Nuevo Estudiante</span>
     </a>
@@ -96,7 +96,7 @@ $totalActivos = count(array_filter($estudiantes, fn($e) => $e['estado'] === 'act
           <tr>
             <td class="ps-4">
               <div class="d-flex align-items-center gap-3">
-                <div class="avatar-md" style="background:linear-gradient(135deg,#047857,#059669);"><?= iniciales($e['nombre'], $e['apellido']) ?></div>
+                <?= avatarHTML($e['foto_perfil'] ?? '', iniciales($e['nombre'], $e['apellido']), 'avatar-md', 'background:linear-gradient(135deg,#047857,#059669);') ?>
                 <div>
                   <div class="fw-bold text-dark"><?= htmlspecialchars($e['nombre'] . ' ' . $e['apellido']) ?></div>
                   <small class="text-muted"><i class="bi bi-person me-1"></i><?= htmlspecialchars($e['usuario']) ?></small>

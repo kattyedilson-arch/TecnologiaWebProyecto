@@ -28,6 +28,9 @@ $resumen = $dashboardModel->obtenerResumenGlobal();
 $ultimasTutorias = $dashboardModel->obtenerUltimasTutorias(6);
 $topTutores = $dashboardModel->obtenerTopTutores(5);
 $materiasTop = $dashboardModel->obtenerMateriasTop(5);
+$desgloseNivel = $dashboardModel->obtenerDesgloseNivelAcademico();
+$resumenOfertas = $dashboardModel->obtenerResumenOfertas();
+$resumenTurnos = $dashboardModel->obtenerResumenTurnos();
 
 // Defensa por si el promedio llega como null (no hay evaluaciones aún)
 $resumen['promedio_evaluaciones'] = $resumen['promedio_evaluaciones'] ?? 0;

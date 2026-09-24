@@ -12,17 +12,17 @@ del mensaje flash).
 
 <?php if (isset($_SESSION['id_usuario'])): ?>
     </div><!-- /.app-content -->
-  </main><!-- /.app-main -->
 
-  <footer class="py-3" style="border-top:1px solid #e6eaf2; background:#fff;">
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 px-4 text-muted" style="font-size:.82rem;">
-      <div>
-        <i class="bi bi-mortarboard-fill text-primary me-1"></i>
-        <strong>Sistema Web de Apoyo Académico para Tutorías</strong> &bull; &copy; <?= date('Y') ?> UPDS
+    <footer class="py-3 flex-shrink-0" style="border-top:1px solid #e6eaf2; background:#fff;">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 px-4 text-muted" style="font-size:.82rem;">
+        <div>
+          <i class="bi bi-mortarboard-fill text-primary me-1"></i>
+          <strong>Sistema Web de Apoyo Académico para Tutorías</strong> &bull; &copy; <?= date('Y') ?> UPDS
+        </div>
+        <div class="small">Materia de Tecnologías Web &bull; <i class="bi bi-shield-check me-1"></i>Hecho con PHP + Vue 3</div>
       </div>
-      <div class="small">Materia de Tecnologías Web &bull; <i class="bi bi-shield-check me-1"></i>Hecho con PHP + Vue 3</div>
-    </div>
-  </footer>
+    </footer>
+  </main><!-- /.app-main -->
 <?php else: ?>
   </main>
 <?php endif; ?>
@@ -76,6 +76,55 @@ del mensaje flash).
       }
     });
   }
+
+  // Confirmación estilizada reutilizable (SweetAlert2, paleta UPDS)
+  function mostrarConfirmacion(opciones) {
+    const o = Object.assign({
+      titulo: '¿Confirmar acción?',
+      texto: '¿Estás seguro de realizar esta acción?',
+      icono: 'question',
+      textoConfirmar: 'Sí, continuar',
+      color: '#1e40af'
+    }, opciones || {});
+
+    return Swal.fire({
+      title: o.titulo,
+      html: o.texto,
+      icon: o.icono,
+      showCancelButton: true,
+      confirmButtonColor: o.color,
+      cancelButtonColor: '#64748b',
+      confirmButtonText: o.textoConfirmar,
+      cancelButtonText: 'Cancelar',
+      customClass: { popup: 'rounded-4' }
+    }).then((result) => ({ confirmado: result.isConfirmed }));
+  }
+
+  // Confirmación para enlaces (navega solo si el usuario confirma)
+  function confirmarEnlace(url, opciones) {
+    mostrarConfirmacion(opciones).then(({ confirmado }) => {
+      if (confirmado) window.location.assign(url);
+    });
+    return false;
+  }
+
+  // Intercepta envíos de formularios marcados con data-confirm
+  // y los confirma con un modal estilizado en vez del confirm() nativo.
+  document.addEventListener('submit', function (e) {
+    const form = e.target;
+    if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-confirm')) return;
+
+    e.preventDefault();
+    mostrarConfirmacion({
+      titulo: form.getAttribute('data-confirm-title') || '¿Confirmar acción?',
+      texto: form.getAttribute('data-confirm') || '¿Estás seguro de realizar esta acción?',
+      icono: form.getAttribute('data-confirm-icon') || 'question',
+      textoConfirmar: form.getAttribute('data-confirm-text') || 'Sí, continuar',
+      color: form.getAttribute('data-confirm-color') || '#1e40af'
+    }).then(({ confirmado }) => {
+      if (confirmado) form.submit();
+    });
+  });
 
   // Mensaje flash mostrado como notificación flotante
   document.addEventListener('DOMContentLoaded', function () {

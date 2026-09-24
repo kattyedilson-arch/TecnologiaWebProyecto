@@ -43,6 +43,33 @@ class MateriaModel
     }
 
     /**
+     * De una lista de ids devuelve SOLO las materias que existen en la BD
+     * (validación en lote, evita el patrón N+1 al guardar materias).
+     * @param array $ids Lista de ids a comprobar
+     * @return array Filas {id_materia} de las materias existentes
+     */
+    public function obtenerExistentes($ids)
+    {
+        $ids = array_values(array_filter(array_map('intval', (array)$ids)));
+        if (empty($ids)) {
+            return [];
+        }
+
+        $placeholders = [];
+        $params = [];
+        foreach ($ids as $i => $id) {
+            $key = ':id' . $i;
+            $placeholders[] = $key;
+            $params[$key] = (int)$id;
+        }
+
+        $sql = "SELECT id_materia FROM materias WHERE id_materia IN (" . implode(',', $placeholders) . ")";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
+    /**
      * Materias de una carrera específica, con su carrera (usado en formularios).
      * @param int $id_carrera Identificador de la carrera
      * @return array Materias de la carrera ordenadas alfabéticamente
