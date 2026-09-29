@@ -26,7 +26,7 @@ require_once __DIR__ . '/../layouts/header.php';
         <option value="0" <?= $idPeriodo === 0 ? 'selected' : '' ?>>Todos los periodos</option>
         <?php foreach ($periodos as $periodo): ?>
           <option value="<?= (int)$periodo['id_periodo'] ?>" <?= (int)$periodo['id_periodo'] === $idPeriodo ? 'selected' : '' ?>>
-            <?= e($periodo['nombre']) ?><?= (int)$periodo['activo'] === 1 ? ' (activo)' : '' ?>
+            <?= e($periodo['nombre']) ?><?= ($periodo['estado'] ?? '') === 'abierto' ? ' (activo)' : '' ?>
           </option>
         <?php endforeach; ?>
       </select>

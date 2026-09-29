@@ -31,15 +31,20 @@ $ordenes = [
 $colSql = $ordenes[$p['col']] ?? 'u.nombre';
 $orderSql = "ORDER BY " . $colSql . " " . $p['dir'] . ", u.nombre ASC";
 
-$sqlConteo = "SELECT COUNT(*)
-              FROM tutores t
-              INNER JOIN usuarios u ON t.id_usuario = u.id_usuario" . $where;
+// El listado se apoya en roles.nombre_rol para decidir quién es docente:
+// un usuario con rol tutor sin ficha en 'tutores' no se muestra, y un
+// usuario degradado a otro rol deja de aparecer aunque conserve su ficha
+// (esa ficha no se borra porque seis tablas la referencian).
+$joinUsuarios = "FROM tutores t
+     INNER JOIN usuarios u ON t.id_usuario = u.id_usuario
+     INNER JOIN roles r ON u.id_rol = r.id_rol AND r.nombre_rol = 'tutor'";
+
+$sqlConteo = "SELECT COUNT(*) " . $joinUsuarios . $where;
 $sqlDatos = "SELECT t.id_tutor, t.id_usuario, t.especialidad, t.biografia,
                     u.nombre, u.apellido, u.correo, u.telefono, u.usuario, u.estado, u.foto_perfil,
                     (SELECT COUNT(*) FROM tutor_materia tm WHERE tm.id_tutor = t.id_tutor) AS total_materias,
                     (SELECT COUNT(*) FROM disponibilidad_tutor dt WHERE dt.id_tutor = t.id_tutor) AS total_horarios
-             FROM tutores t
-             INNER JOIN usuarios u ON t.id_usuario = u.id_usuario" . $where . ' ' . $orderSql;
+             " . $joinUsuarios . $where . ' ' . $orderSql;
 
 $resultado = paginarConsulta($pdo, $sqlConteo, $sqlDatos, $params, $p['pagina'], $p['por_pagina']);
 $tutores = $resultado['filas'];

@@ -5,16 +5,20 @@
 // Página DEDICADA al estudiante para agendar una tutoría a
 // partir de los horarios PREDEFINIDOS por el administrador.
 // El estudiante NO modifica aulas, días libres ni modalidad:
-//  1. Materia académica (de su carrera).
+//  1. Carrera: informativa, con los metadatos MODELO DE ESTUDIO,
+//     SISTEMA DE ESTUDIO y TURNO del programa.
 //  2. Tipo de tutoría (Pregrado, Posgrado, Invierno, Verano).
-//  3. Horario / Turno (Mañana, Mediodía, Tarde, Noche) — los
-//     cuatro turnos fijos SIEMPRE se muestran; se deshabilitan
-//     los que aún no tienen horario publicado+asignado.
-//  4. Horario preestablecido: oferta (turno+tutor+modalidad+aula)
-//     publicada por el admin y asignada a un docente.
+//  3. Sistema de estudio: botones PRESENCIAL / HORARIO DE TRABAJO /
+//     SEMI PRESENCIAL. El activo es el que declara su carrera.
+//  4. Turno: botones generados desde el catálogo 'turnos'. Se
+//     deshabilitan los que aún no tienen horario publicado+asignado.
+//  5. Horario preestablecido: oferta (turno+tutor+modalidad+aula)
+//     publicada por el admin. La materia NO es un campo del formulario:
+//     se muestra dentro de cada horario y es la que se registra.
 //     La fecha de la sesión se asigna automáticamente (próximo día libre del turno).
 // Variables del controlador:
-//   $materias, $turnos, $ofertasDisponibles, $errores, $carreraEstudiante
+//   $ofertasDisponibles, $errores, $carreraEtiqueta, $carrera,
+//   $sistemasEstudio, $sistemaActivo, $turnos
 // =========================================================
 require_once __DIR__ . '/../../includes/verificar_sesion.php';
 $tituloPagina = 'Materias Disponibles - UPDS';
@@ -36,7 +40,6 @@ $tiposTutoria = [
     'invierno' => 'Invierno (Intensivo)',
     'verano'   => 'Verano (Intensivo)',
 ];
-$postMateria = (int)($_POST['id_materia'] ?? 0);
 $postNivel   = isset($_POST['id_oferta']) ? '' : '';
 $idsMateriasConOferta = array_values(array_unique(array_map('intval', array_column($ofertasDisponibles, 'id_materia'))));
 ?>
@@ -50,7 +53,7 @@ $idsMateriasConOferta = array_values(array_unique(array_map('intval', array_colu
             <i class="bi bi-calendar-plus-fill"></i>
             <span>Materias Disponibles</span>
           </h3>
-          <p class="text-white-50 mb-0">Elige tu materia y el tipo de tutoría. La fecha de la sesión se asigna automáticamente al primer día libre del turno elegido.</p>
+          <p class="text-white-50 mb-0">Elige el tipo de tutoría y el turno. La fecha de la sesión se asigna automáticamente al primer día libre del turno elegido.</p>
         </div>
         <a href="<?= $volverUrl ?>" class="btn btn-light d-flex align-items-center gap-1">
           <i class="bi bi-arrow-left"></i> Volver
@@ -73,8 +76,9 @@ $idsMateriasConOferta = array_values(array_unique(array_map('intval', array_colu
       <i class="bi bi-info-circle-fill mt-1"></i>
       <div>
         El <b>turno, modalidad y aula</b> son definidos exclusivamente por la administración.
-        Tú eliges la materia y el tipo de tutoría; la <b>fecha de la sesión se asigna
-        automáticamente</b> el próximo día disponible del turno elegido.
+        Tú eliges el <b>tipo de tutoría</b> y el <b>turno</b>; la <b>materia</b> es la del horario
+        que selecciones y la <b>fecha de la sesión se asigna automáticamente</b> el próximo día
+        disponible del turno elegido.
       </div>
     </div>
 
@@ -97,46 +101,41 @@ $idsMateriasConOferta = array_values(array_unique(array_map('intval', array_colu
       <form method="POST" autocomplete="off" class="needs-validation" novalidate>
     <?= campoCsrf() ?>
         <div class="row g-3">
-          <!-- 1. Materia (tarjetas clicables) -->
+          <!-- 1. Carrera (informativa) + metadatos institucionales -->
           <div class="col-12">
-            <label class="form-label fw-semibold text-secondary small text-uppercase">1. Materia Disponible *</label>
-            <div id="grillaMaterias" class="row g-2">
-              <?php foreach ($materias as $m): ?>
-                <?php $conOferta = in_array((int)$m['id_materia'], $idsMateriasConOferta, true); ?>
-                <div class="col-6 col-md-4">
-                  <button type="button"
-                          class="materia-card <?= $postMateria === (int)$m['id_materia'] ? 'materia-active' : '' ?> <?= $conOferta ? '' : 'materia-disabled' ?>"
-                          data-materia="<?= (int)$m['id_materia'] ?>"
-                          aria-disabled="<?= $conOferta ? 'false' : 'true' ?>"
-                          title="<?= $conOferta ? 'Haz clic para inscribirte' : 'Sin horarios publicados por la administración' ?>">
-                    <span class="materia-icon"><i class="bi bi-journal-bookmark<?= $conOferta ? '' : '-fill' ?>"></i></span>
-                    <span class="materia-info">
-                      <span class="materia-nombre"><?= htmlspecialchars($m['nombre_materia']) ?></span>
-                      <span class="materia-carrera"><?= htmlspecialchars($m['nombre_carrera'] ?? 'General') ?></span>
-                    </span>
-                    <?php if ($conOferta): ?>
-                      <span class="materia-accion"><i class="bi bi-person-plus-fill"></i> Inscribirme</span>
-                    <?php else: ?>
-                      <span class="materia-accion materia-sin"><i class="bi bi-hourglass-split"></i> Sin horarios</span>
-                    <?php endif; ?>
-                  </button>
-                </div>
-              <?php endforeach; ?>
-            </div>
-            <select name="id_materia" id="selMateria" class="d-none" required>
-              <option value=""></option>
-              <?php foreach ($materias as $m): ?>
-                <option value="<?= $m['id_materia'] ?>" <?= $postMateria === (int)$m['id_materia'] ? 'selected' : '' ?>>
-                  <?= htmlspecialchars($m['nombre_materia']) ?> (<?= htmlspecialchars($m['nombre_carrera'] ?? 'General') ?>)
-                </option>
-              <?php endforeach; ?>
+            <label class="form-label fw-semibold text-secondary small text-uppercase" for="selCarrera">Carrera</label>
+            <select id="selCarrera" class="form-select rounded-3 py-2" disabled
+                    title="Tu carrera es la de tu ficha académica; no se puede cambiar aquí.">
+              <option selected><?= htmlspecialchars($carreraEtiqueta) ?></option>
             </select>
-            <div class="form-text" id="textoMateria"><i class="bi bi-info-circle me-1"></i>Materias de tu carrera (<?= htmlspecialchars($carreraEstudiante ?: 'sin asignar') ?>). Haz clic en una tarjeta para continuar.</div>
-            <div class="invalid-feedback">Debes seleccionar una materia.</div>
+
+            <div class="row g-2 mt-1" id="metadatosCarrera">
+              <div class="col-6 col-md-4">
+                <div class="meta-dato">
+                  <span class="meta-label"><i class="bi bi-mortarboard me-1"></i>Modelo de Estudio</span>
+                  <span class="meta-valor" id="metaModelo"><?= htmlspecialchars($carrera['modelo_estudio'] ?? '—') ?></span>
+                </div>
+              </div>
+              <div class="col-6 col-md-4">
+                <div class="meta-dato">
+                  <span class="meta-label"><i class="bi bi-building me-1"></i>Sistema de Estudio</span>
+                  <span class="meta-valor" id="metaSistema"><?= htmlspecialchars($sistemaActivo) ?></span>
+                </div>
+              </div>
+              <div class="col-6 col-md-4">
+                <div class="meta-dato">
+                  <span class="meta-label"><i class="bi bi-clock me-1"></i>Turno</span>
+                  <span class="meta-valor" id="metaTurno">—</span>
+                </div>
+              </div>
+            </div>
+            <div class="form-text" id="textoCarrera">
+              <i class="bi bi-info-circle me-1"></i>Programa de tu ficha académica. Los horarios publicados corresponden a esta carrera.
+            </div>
           </div>
 
           <!-- 2. Tipo de tutoría -->
-          <div class="col-md-6">
+          <div class="col-12">
             <label class="form-label fw-semibold text-secondary small text-uppercase" for="selTipo">Tipo de Tutoría *</label>
             <select name="tipo_tutoria" id="selTipo" class="form-select rounded-3 py-2" required>
               <option value="" disabled selected>Selecciona el tipo...</option>
@@ -144,26 +143,49 @@ $idsMateriasConOferta = array_values(array_unique(array_map('intval', array_colu
                 <option value="<?= $valor ?>"><?= htmlspecialchars($etiqueta) ?></option>
               <?php endforeach; ?>
             </select>
-            <div class="form-text" id="textoTipo"><i class="bi bi-info-circle me-1"></i>Primero elige la materia para ver los tipos con horarios publicados.</div>
+            <div class="form-text" id="textoTipo"><i class="bi bi-info-circle me-1"></i>Se habilitan los tipos con horarios publicados.</div>
             <div class="invalid-feedback">Debes seleccionar el tipo de tutoría.</div>
           </div>
 
-          <!-- 3. Horario / Turno -->
-          <div class="col-md-6">
-            <label class="form-label fw-semibold text-secondary small text-uppercase" for="selTurno">Horario (Turno) *</label>
-            <select name="turno" id="selTurno" class="form-select rounded-3 py-2" required>
-              <option value="" disabled selected>Selecciona el turno...</option>
-              <?php foreach ($turnos as $t): ?>
-                <option value="<?= (int)$t['id_turno'] ?>">
-                  <?= htmlspecialchars($t['nombre_turno']) ?> (<?= substr($t['hora_inicio'], 0, 5) ?> - <?= substr($t['hora_fin'], 0, 5) ?>)
-                </option>
+          <!-- 3. Sistema de estudio (botones) -->
+          <div class="col-12">
+            <span class="form-label fw-semibold text-secondary small text-uppercase d-block">Sistema de Estudio</span>
+            <div class="grupo-botones" id="grupoSistema" role="group" aria-label="Sistema de estudio">
+              <?php foreach ($sistemasEstudio as $sistema): ?>
+                <button type="button"
+                        class="btn-opcion<?= $sistema === $sistemaActivo ? ' btn-activo' : '' ?>"
+                        data-sistema="<?= htmlspecialchars($sistema) ?>"
+                        aria-pressed="<?= $sistema === $sistemaActivo ? 'true' : 'false' ?>">
+                  <?= htmlspecialchars($sistema) ?>
+                </button>
               <?php endforeach; ?>
-            </select>
-            <div class="form-text" id="textoTurno"><i class="bi bi-info-circle me-1"></i>Los 4 turnos fijos de la UPDS. Se habilitan solo los que tienen horario publicado y asignado.</div>
-            <div class="invalid-feedback">Debes seleccionar un turno con horario publicado.</div>
+            </div>
+            <input type="hidden" name="sistema_estudio" id="inpSistema" value="<?= htmlspecialchars($sistemaActivo) ?>">
+            <div class="form-text" id="textoSistema">
+              <i class="bi bi-info-circle me-1"></i>Sistema declarado por tu carrera (<?= htmlspecialchars($sistemaActivo) ?>).
+            </div>
           </div>
 
-          <!-- 4. Horario preestablecido (turno + tutor + modalidad + aula) -->
+          <!-- 4. Turno (botones generados desde el catálogo 'turnos') -->
+          <div class="col-12">
+            <span class="form-label fw-semibold text-secondary small text-uppercase d-block">Turno *</span>
+            <div class="grupo-botones" id="grupoTurno" role="group" aria-label="Turno">
+              <?php foreach ($turnos as $t): ?>
+                <button type="button"
+                        class="btn-opcion btn-turno"
+                        data-turno="<?= (int)$t['id_turno'] ?>"
+                        data-nombre="<?= htmlspecialchars(mb_strtoupper($t['nombre_turno'])) ?>">
+                  <?= htmlspecialchars(mb_strtoupper($t['nombre_turno'])) ?>
+                  <small><?= substr($t['hora_inicio'], 0, 5) ?> – <?= substr($t['hora_fin'], 0, 5) ?></small>
+                </button>
+              <?php endforeach; ?>
+            </div>
+            <input type="hidden" name="turno" id="inpTurno" value="">
+            <div class="form-text" id="textoTurno"><i class="bi bi-info-circle me-1"></i>Elige un turno. Se habilitan solo los que tienen horario publicado y asignado.</div>
+            <div class="invalid-feedback" id="errorTurno">Debes seleccionar un turno con horario publicado.</div>
+          </div>
+
+          <!-- 5. Horario preestablecido (turno + tutor + modalidad + aula + materia) -->
           <div class="col-12">
             <label class="form-label fw-semibold text-secondary small text-uppercase">Horario Preestablecido *</label>
             <div id="contenedorOfertas" class="d-flex flex-column gap-2">
@@ -196,11 +218,11 @@ $idsMateriasConOferta = array_values(array_unique(array_map('intval', array_colu
                 </label>
               <?php endforeach; ?>
             </div>
-            <div class="form-text" id="textoOfertas"><i class="bi bi-info-circle me-1"></i>Elige uno de los horarios publicados y asignados a un docente.</div>
+            <div class="form-text" id="textoOfertas"><i class="bi bi-info-circle me-1"></i>Elige uno de los horarios publicados. La <b>materia</b> de tu tutoría es la de la tarjeta que selecciones.</div>
             <div class="invalid-feedback">Debes seleccionar un horario disponible.</div>
           </div>
 
-          <!-- 5. Observaciones / Temas -->
+          <!-- 6. Observaciones / Temas -->
           <div class="col-12">
             <label class="form-label fw-semibold text-secondary small text-uppercase">Temas o Preguntas a Tratar</label>
             <textarea name="observaciones" class="form-control rounded-3" rows="3" maxlength="1000"
@@ -224,103 +246,91 @@ $idsMateriasConOferta = array_values(array_unique(array_map('intval', array_colu
 <?php if (!empty($ofertasDisponibles)): ?>
 <script>
   (() => {
-    const selMateria = document.getElementById('selMateria');
     const selTipo    = document.getElementById('selTipo');
-    const selTurno   = document.getElementById('selTurno');
+    const inpTurno   = document.getElementById('inpTurno');
+    const inpSistema = document.getElementById('inpSistema');
+    const grupoTurno = document.getElementById('grupoTurno');
+    const grupoSistema = document.getElementById('grupoSistema');
+    const metaTurno  = document.getElementById('metaTurno');
+    const metaSistema = document.getElementById('metaSistema');
+    const textoSistema = document.getElementById('textoSistema');
+    const textoTipo  = document.getElementById('textoTipo');
+    const textoTurno = document.getElementById('textoTurno');
     const textoOfertas = document.getElementById('textoOfertas');
     const contenedor   = document.getElementById('contenedorOfertas');
+    const errorTurno   = document.getElementById('errorTurno');
     const radios       = Array.from(document.querySelectorAll('.oferta-radio'));
     const etiquetas    = Array.from(document.querySelectorAll('.oferta-option'));
+    const botonesTurno = Array.from(document.querySelectorAll('.btn-turno'));
     const sinOfertaMsg = 'No hay horarios publicados con esta combinación. Contacta a la administración.';
 
-    // ---- Tarjetas de materias clicables ----
-    const cardsMateria = Array.from(document.querySelectorAll('.materia-card'));
-    const textoMateria = document.getElementById('textoMateria');
-
-    function marcarTarjetaMateria() {
-      cardsMateria.forEach(c => c.classList.toggle('materia-active', c.dataset.materia === selMateria.value));
-    }
-
-    function seleccionarTarjetaMateria(id) {
-      if (selMateria.value === id) return;
-      selMateria.value = id;
-      marcarTarjetaMateria();
-      if (textoMateria && id) {
-        textoMateria.innerHTML = '<i class="bi bi-check-circle me-1 text-success"></i>Materia seleccionada. Elige el tipo de tutoría y el turno.';
-      }
-      sincronizarSelects();
-      filtrarHorarios();
-    }
-
-    cardsMateria.forEach(c => c.addEventListener('click', () => {
-      if (c.classList.contains('materia-disabled')) {
-        if (textoMateria) textoMateria.innerHTML = '<i class="bi bi-exclamation-triangle me-1 text-warning"></i>Esta materia aún no tiene horarios publicados por la administración. Elige otra o vuelve más tarde.';
-        return;
-      }
-      seleccionarTarjetaMateria(c.dataset.materia);
-    }));
-
     // ---- Utilidades sobre las ofertas ----
-    function ofertasCoincidentes(materiaId, nivel, turnoId) {
+    function ofertasCoincidentes(nivel, turnoId) {
       return radios.filter(r =>
-        (!materiaId || r.dataset.materia === materiaId) &&
-        (!nivel    || r.dataset.nivel === nivel) &&
-        (!turnoId  || r.dataset.turno === turnoId));
+        (!nivel   || r.dataset.nivel === nivel) &&
+        (!turnoId || r.dataset.turno === turnoId));
     }
 
-    // Tipos con oferta para la materia elegida
-    function tiposDisponibles(materiaId) {
+    // Tipos con oferta publicada. La materia ya no es un filtro: todas las
+    // ofertas pertenecen a la carrera del estudiante, así que basta el nivel.
+    function tiposDisponibles() {
       const set = new Set();
-      radios.forEach(r => { if (!materiaId || r.dataset.materia === materiaId) set.add(r.dataset.nivel); });
+      radios.forEach(r => set.add(r.dataset.nivel));
       return set;
     }
 
-    // Turnos con oferta para materia+tipo
-    function turnosDisponibles(materiaId, nivel) {
+    // Turnos con oferta para el nivel elegido
+    function turnosDisponibles(nivel) {
       const set = new Set();
-      radios.forEach(r => {
-        if ((!materiaId || r.dataset.materia === materiaId) && (!nivel || r.dataset.nivel === nivel)) set.add(r.dataset.turno);
-      });
+      radios.forEach(r => { if (!nivel || r.dataset.nivel === nivel) set.add(r.dataset.turno); });
       return set;
     }
 
-    // ---- Habilitar/deshabilitar opciones de Tipo y Turno ----
+    // ---- Habilitar/deshabilitar las opciones de Tipo y Turno ----
     function sincronizarSelects() {
-      const materiaId = selMateria.value;
-      const nivel     = selTipo.value;
-      const tiposOk   = tiposDisponibles(materiaId);
+      const tiposOk = tiposDisponibles();
 
       Array.from(selTipo.options).forEach(op => { op.disabled = op.value !== '' && !tiposOk.has(op.value); });
       if (selTipo.value && !tiposOk.has(selTipo.value)) selTipo.value = '';
-      if (!materiaId) selTipo.value = '';
 
-      const turnosOk  = turnosDisponibles(materiaId, selTipo.value);
-      Array.from(selTurno.options).forEach(op => { op.disabled = op.value !== '' && !turnosOk.has(op.value); });
-      if (selTurno.value && !turnosOk.has(selTurno.value)) selTurno.value = '';
-      if (!selTipo.value) selTurno.value = '';
+      const turnosOk = turnosDisponibles(selTipo.value);
 
-      const textoAreaTipo = document.getElementById('textoTipo');
-      if (!materiaId) textoAreaTipo.innerHTML = '<i class="bi bi-info-circle me-1"></i>Primero elige la materia para ver los tipos con horarios publicados.';
-      else if (tiposOk.size === 0) textoAreaTipo.innerHTML = '<i class="bi bi-exclamation-triangle me-1 text-warning"></i>Ningún tipo de tutoría tiene horario publicado para esta materia.';
-      else textoAreaTipo.innerHTML = '<i class="bi bi-info-circle me-1"></i>' + tiposOk.size + ' tipo(s) con horarios publicados.';
+      // Los botones de turno se pintan según si tienen horario publicado
+      botonesTurno.forEach(b => {
+        const id = b.dataset.turno;
+        const disponible = turnosOk.has(id);
+        b.disabled = !disponible;
+        b.classList.toggle('btn-activo', disponible && id === inpTurno.value);
+        b.setAttribute('aria-pressed', (disponible && id === inpTurno.value) ? 'true' : 'false');
+      });
 
-      const textoAreaTurno = document.getElementById('textoTurno');
-      if (!selTipo.value) textoAreaTurno.innerHTML = '<i class="bi bi-info-circle me-1"></i>Primero elige el tipo de tutoría.';
-      else if (turnosOk.size === 0) textoAreaTurno.innerHTML = '<i class="bi bi-exclamation-triangle me-1 text-warning"></i>Ningún turno tiene horario publicado para esta combinación.';
-      else textoAreaTurno.innerHTML = '<i class="bi bi-info-circle me-1"></i>' + turnosOk.size + ' turno(s) disponibles para esta combinación.';
+      if (inpTurno.value && !turnosOk.has(inpTurno.value)) inpTurno.value = '';
+      if (!selTipo.value) inpTurno.value = '';
+
+      // El metadato TURNO refleja el botón activo
+      const botonActivo = botonesTurno.find(b => b.dataset.turno === inpTurno.value);
+      if (metaTurno) metaTurno.textContent = botonActivo ? botonActivo.dataset.nombre : '—';
+
+      if (tiposOk.size === 0) {
+        textoTipo.innerHTML = '<i class="bi bi-exclamation-triangle me-1 text-warning"></i>Ningún tipo de tutoría tiene horario publicado para tu carrera.';
+      } else {
+        textoTipo.innerHTML = '<i class="bi bi-info-circle me-1"></i>' + tiposOk.size + ' tipo(s) con horarios publicados.';
+      }
+
+      if (!selTipo.value) textoTurno.innerHTML = '<i class="bi bi-info-circle me-1"></i>Primero elige el tipo de tutoría.';
+      else if (turnosOk.size === 0) textoTurno.innerHTML = '<i class="bi bi-exclamation-triangle me-1 text-warning"></i>Ningún turno tiene horario publicado para este tipo.';
+      else textoTurno.innerHTML = '<i class="bi bi-info-circle me-1"></i>' + turnosOk.size + ' turno(s) disponibles para este tipo.';
     }
 
     // ---- Filtrar tarjetas de horarios ----
     function filtrarHorarios() {
-      const materiaId = selMateria.value;
-      const nivel     = selTipo.value;
-      const turnoId   = selTurno.value;
+      const nivel   = selTipo.value;
+      const turnoId = inpTurno.value;
       let visibles = 0;
 
       etiquetas.forEach(et => {
-        const coincide = (!materiaId || et.dataset.materia === materiaId) &&
-                         (!nivel    || et.dataset.nivel === nivel) &&
-                         (!turnoId  || et.dataset.turno === turnoId);
+        const coincide = (!nivel   || et.dataset.nivel === nivel) &&
+                         (!turnoId || et.dataset.turno === turnoId);
         et.style.display = coincide ? '' : 'none';
         if (coincide) visibles++;
       });
@@ -346,17 +356,42 @@ $idsMateriasConOferta = array_values(array_unique(array_map('intval', array_colu
     }
 
     // ---- Eventos ----
-    selMateria.addEventListener('change', () => { sincronizarSelects(); filtrarHorarios(); });
-    selTipo.addEventListener('change',    () => { sincronizarSelects(); filtrarHorarios(); });
-    selTurno.addEventListener('change',   () => { syncTurno(); filtrarHorarios(); });
+    selTipo.addEventListener('change', () => { sincronizarSelects(); filtrarHorarios(); });
 
-    function syncTurno() {
-      const materiaId = selMateria.value;
-      const nivel     = selTipo.value;
-      const turnoId   = selTurno.value;
-      if (!materiaId || !nivel || !turnoId) return;
-      const existentes = ofertasCoincidentes(materiaId, nivel, turnoId);
-      if (existentes.length === 1) {
+    // Botones de SISTEMA DE ESTUDIO: actualizan el activo y el metadato
+    if (grupoSistema) {
+      grupoSistema.addEventListener('click', (ev) => {
+        const boton = ev.target.closest('.btn-opcion');
+        if (!boton || boton.disabled) return;
+        grupoSistema.querySelectorAll('.btn-opcion').forEach(b => {
+          const activo = b === boton;
+          b.classList.toggle('btn-activo', activo);
+          b.setAttribute('aria-pressed', activo ? 'true' : 'false');
+        });
+        const valor = boton.dataset.sistema;
+        if (inpSistema) inpSistema.value = valor;
+        if (metaSistema) metaSistema.textContent = valor;
+        if (textoSistema) textoSistema.innerHTML = '<i class="bi bi-check-circle me-1 text-success"></i>Sistema de estudio: ' + valor + '.';
+      });
+    }
+
+    // Botones de TURNO
+    if (grupoTurno) {
+      grupoTurno.addEventListener('click', (ev) => {
+        const boton = ev.target.closest('.btn-turno');
+        if (!boton || boton.disabled) return;
+        inpTurno.value = boton.dataset.turno;
+        sincronizarSelects();
+        filtrarHorarios();
+        marcarTurnoSiUnico();
+      });
+    }
+
+    // Si el turno elegido deja un único horario, se preselecciona
+    function marcarTurnoSiUnico() {
+      if (!selTipo.value || !inpTurno.value) return;
+      const existentes = ofertasCoincidentes(selTipo.value, inpTurno.value);
+      if (existentes.length === 1 && !existentes[0].checked) {
         existentes[0].checked = true;
         marcacionActiva();
       }
@@ -374,13 +409,13 @@ $idsMateriasConOferta = array_values(array_unique(array_map('intval', array_colu
     // ----- Inicialización (y restauración en POST con errores) -----
     sincronizarSelects();
     filtrarHorarios();
-    marcarTarjetaMateria();
 
-    // Restaurar selección si vino de un POST con errores
+    // Restaurar selección si vino de un POST con errores: el radio marcado
+    // identifica el nivel y el turno que el estudiante había elegido.
     const radioPost = radios.find(r => r.checked);
     if (radioPost) {
       if (radioPost.dataset.nivel) selTipo.value = radioPost.dataset.nivel;
-      if (radioPost.dataset.turno) selTurno.value = radioPost.dataset.turno;
+      if (radioPost.dataset.turno) inpTurno.value = radioPost.dataset.turno;
       sincronizarSelects();
       filtrarHorarios();
       if (radioPost.closest('.oferta-option').style.display !== 'none') {
@@ -396,6 +431,14 @@ $idsMateriasConOferta = array_values(array_unique(array_map('intval', array_colu
                             .filter(r => r.closest('.oferta-option').style.display !== 'none');
         const checkedVisible = visible.find(r => r.checked);
         let ok = true;
+
+        // El turno es un input oculto: HTML5 no lo valida, se comprueba aquí
+        if (!inpTurno.value) {
+          ok = false;
+          if (errorTurno) errorTurno.style.display = 'block';
+        } else if (errorTurno) {
+          errorTurno.style.display = 'none';
+        }
 
         visible.forEach(r => { r.setCustomValidity(''); });
         if (visible.length === 0) {
@@ -414,33 +457,63 @@ $idsMateriasConOferta = array_values(array_unique(array_map('intval', array_colu
 </script>
 
 <style>
-  .materia-card {
-    width: 100%;
-    height: 100%;
+  /* ---- Metadatos institucionales bajo el select de carrera ---- */
+  .meta-dato {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: .5rem;
-    text-align: left;
+    gap: .15rem;
+    height: 100%;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 3px solid #1e40af;
+    border-radius: .6rem;
+    padding: .5rem .7rem;
+  }
+  .meta-label {
+    font-size: .66rem;
+    font-weight: 700;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    color: #64748b;
+  }
+  .meta-valor { font-weight: 700; color: #0f172a; font-size: .88rem; }
+
+  /* ---- Grupos de botones (Sistema de Estudio y Turno) ---- */
+  .grupo-botones { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .btn-opcion {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .1rem;
     background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 1rem;
-    padding: .9rem 1rem;
-    transition: border-color .15s ease, background .15s ease, transform .15s ease, box-shadow .15s ease;
+    border: 1px solid #cbd5e1;
+    border-radius: .6rem;
+    padding: .5rem .95rem;
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .3px;
+    color: #334155;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease, color .15s ease, box-shadow .15s ease;
   }
-  .materia-card:hover { border-color: #1e40af !important; background: #f8faff; transform: translateY(-1px); }
-  .materia-card.materia-active { border-color: #1e40af !important; box-shadow: 0 0 0 1px #1e40af inset; background: #eef2ff; }
-  .materia-card.materia-disabled { opacity: .55; cursor: not-allowed; filter: grayscale(.4); }
-  .materia-card.materia-disabled:hover { border-color: #e5e7eb; background: #fff; transform: none; }
-  .materia-icon { font-size: 1.15rem; color: #1e40af; line-height: 1; }
-  .materia-info { display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
-  .materia-nombre { font-weight: 600; color: #0f172a; font-size: .9rem; line-height: 1.3; }
-  .materia-carrera { font-size: .72rem; color: #64748b; }
-  .materia-accion {
-    font-size: .72rem; font-weight: 600; color: #1e40af; background: #e0e7ff;
-    padding: .25rem .65rem; border-radius: 999px; margin-top: auto;
+  .btn-opcion small { font-weight: 500; font-size: .68rem; color: #64748b; letter-spacing: 0; }
+  .btn-opcion:hover:not(:disabled) { border-color: #1e40af; background: #f8faff; color: #1e40af; }
+  /* Estado activo: azul institucional */
+  .btn-opcion.btn-activo {
+    border-color: #1e40af;
+    background: #1e40af;
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(30, 64, 175, .28);
   }
-  .materia-accion.materia-sin { color: #64748b; background: #f1f5f9; }
+  .btn-opcion.btn-activo small { color: rgba(255, 255, 255, .82); }
+  .btn-opcion:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+    background: #f1f5f9;
+    color: #94a3b8;
+  }
+  .btn-opcion:disabled small { color: #94a3b8; }
+
   .oferta-option:hover { border-color: #1e40af !important; background: #f8faff; }
   .oferta-option.oferta-active { border-color: #1e40af !important; box-shadow: 0 0 0 1px #1e40af inset; background: #eef2ff; }
 </style>

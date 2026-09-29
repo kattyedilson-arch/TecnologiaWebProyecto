@@ -14,6 +14,7 @@ require_once __DIR__ . '/../models/UsuarioModel.php';
 require_once __DIR__ . '/../models/RolModel.php';
 require_once __DIR__ . '/../models/CarreraModel.php';
 require_once __DIR__ . '/../models/EstudianteModel.php';
+require_once __DIR__ . '/../models/TutorModel.php';
 
 requerirRol('administrador');
 
@@ -21,17 +22,38 @@ $usuarioModel = new UsuarioModel($pdo);
 $rolModel = new RolModel($pdo);
 $carreraModel = new CarreraModel($pdo);
 $estudianteModel = new EstudianteModel($pdo);
+$tutorModel = new TutorModel($pdo);
 
-// Id del rol "estudiante" (para mostrar/validar carrera y semestre)
+// Ids de los roles "estudiante" y "tutor" (para las fichas de perfil)
 $roles = $rolModel->obtenerTodos();
 $idRolEstudiante = null;
+$idRolTutor = null;
 foreach ($roles as $r) {
-    if (strtolower(trim($r['nombre_rol'])) === 'estudiante') {
+    $nombreRol = strtolower(trim($r['nombre_rol']));
+    if ($nombreRol === 'estudiante') {
         $idRolEstudiante = (int)$r['id_rol'];
-        break;
+    } elseif ($nombreRol === 'tutor') {
+        $idRolTutor = (int)$r['id_rol'];
     }
 }
 $carreras = $carreraModel->obtenerTodas();
+
+/**
+ * Listado al que volver tras guardar, según el rol resultante.
+ * @param int $idRolElegido
+ * @return string
+ */
+function listadoTrasGuardar($idRolElegido)
+{
+    global $idRolTutor, $idRolEstudiante;
+    if ($idRolTutor !== null && (int)$idRolElegido === $idRolTutor) {
+        return '/controllers/tutores_listar.php';
+    }
+    if ($idRolEstudiante !== null && (int)$idRolElegido === $idRolEstudiante) {
+        return '/controllers/estudiantes_listar.php';
+    }
+    return '/controllers/usuarios_listar.php';
+}
 
 // El id puede venir por GET (al entrar a editar) o por POST (al guardar)
 $id = $_GET['id'] ?? $_POST['id_usuario'] ?? null;
@@ -136,8 +158,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
             }
 
+            // Si el usuario es (o pasó a ser) tutor se asegura su ficha docente.
+            // Si deja de serlo la ficha NO se borra: tutorias, ofertas_admin,
+            // tutor_materia, disponibilidad_tutor, oferta_respuesta y
+            // asignaciones_tutor la referencian. El listado de tutores filtra
+            // por rol, así que deja de mostrarse sin perder historial.
+            $esTutor = ($idRolTutor !== null && (int)$datos['id_rol'] === $idRolTutor);
+            if ($esTutor) {
+                $tutorModel->crearFicha($id);
+            }
+
             setMensaje('success', 'Usuario actualizado correctamente.');
-            redirigir('usuarios_listar.php');
+            redirigir(listadoTrasGuardar($datos['id_rol']));
         } catch (PDOException $e) {
             // Excepción por duplicados de correo/usuario
             $errores[] = "No se pudo actualizar: el correo o el usuario ya están en uso.";

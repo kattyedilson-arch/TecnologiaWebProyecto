@@ -29,9 +29,6 @@ include __DIR__ . '/../layouts/header.php';
       </h2>
       <p class="text-white-50 mb-0">Crea ofertas de materias con turnos para que los tutores las acepten.</p>
     </div>
-    <a href="dashboard.php" class="btn btn-light d-flex align-items-center gap-1">
-      <i class="bi bi-arrow-left"></i> Volver
-    </a>
   </div>
 </div>
 

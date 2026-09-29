@@ -7,7 +7,7 @@
 // acción masiva. La campanita del header muestra el resumen.
 // Variables: $notificaciones, $noLeidas (controlador).
 // =========================================================
-require_once __DIR__ . '/layouts/header.php';
+require_once __DIR__ . '/../layouts/header.php';
 ?>
 
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
@@ -92,4 +92,4 @@ require_once __DIR__ . '/layouts/header.php';
   <?php endif; ?>
 </div>
 
-<?php require_once __DIR__ . '/layouts/footer.php'; ?>
+<?php require_once __DIR__ . '/../layouts/footer.php'; ?>

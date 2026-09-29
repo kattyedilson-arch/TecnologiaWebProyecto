@@ -31,6 +31,9 @@ require_once __DIR__ . '/../layouts/header.php';
         <div class="mb-2">
           <label class="form-label small fw-semibold">Nombre del periodo</label>
           <input type="text" name="nombre" class="form-control" placeholder="2026-1"
+                 pattern="[0-9]{4}-[0-9]{1,2}"
+                 title="Formato AAAA-N, por ejemplo 2026-1"
+                 maxlength="20" autocomplete="off"
                  value="<?= e($periodoEditarCompleto['nombre'] ?? '') ?>" required>
         </div>
 

@@ -16,17 +16,38 @@ class MateriaModel
     }
 
     /**
+     * Columnas por las que se permite ordenar el catálogo de materias.
+     * Se mapean a SQL real: el valor recibido del GET nunca se interpola,
+     * solo se acepta una clave de esta lista.
+     * @return array
+     */
+    public static function columnasOrden()
+    {
+        return [
+            'id'      => 'm.id_materia',
+            'nombre'  => 'm.nombre_materia',
+            'carrera' => 'c.nombre_carrera',
+        ];
+    }
+
+    /**
      * Lista todas las materias junto a su carrera y cuántos tutores la imparten.
+     * @param string $col Clave de columna (ver columnasOrden); por defecto 'id'
+     * @param string $dir 'ASC' o 'DESC'; por defecto 'ASC'
      * @return array Lista de materias del catálogo
      */
-    public function obtenerTodas()
+    public function obtenerTodas($col = 'id', $dir = 'ASC')
     {
+        $columnas = self::columnasOrden();
+        $colSql = $columnas[$col] ?? $columnas['id'];
+        $dirSql = (strtoupper((string)$dir) === 'DESC') ? 'DESC' : 'ASC';
+
         $sql = "SELECT m.id_materia, m.nombre_materia, m.id_carrera,
                        c.nombre_carrera,
                        (SELECT COUNT(*) FROM tutor_materia tm WHERE tm.id_materia = m.id_materia) AS total_tutores
                 FROM materias m
                 LEFT JOIN carreras c ON m.id_carrera = c.id_carrera
-                ORDER BY m.nombre_materia ASC";
+                ORDER BY " . $colSql . ' ' . $dirSql . ', m.id_materia ASC';
         return $this->pdo->query($sql)->fetchAll();
     }
 

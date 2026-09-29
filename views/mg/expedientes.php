@@ -95,7 +95,7 @@ $clasesEtapa = [
       <select name="id_cohorte" class="form-select">
         <option value="">Todas</option>
         <?php foreach ($cohortes as $c): ?>
-          <option value="<?= (int)$c['id_cohorte'] ?>" <?= (int)$_GET['id_cohorte'] === (int)$c['id_cohorte'] ? 'selected' : '' ?>><?= e($c['codigo']) ?></option>
+          <option value="<?= (int)$c['id_cohorte'] ?>" <?= (int)($_GET['id_cohorte'] ?? 0) === (int)$c['id_cohorte'] ? 'selected' : '' ?>><?= e($c['codigo']) ?></option>
         <?php endforeach; ?>
       </select>
     </div>
@@ -104,7 +104,7 @@ $clasesEtapa = [
       <select name="id_modalidad" class="form-select">
         <option value="">Todas</option>
         <?php foreach ($modalidades as $mo): ?>
-          <option value="<?= (int)$mo['id_modalidad'] ?>" <?= (int)$_GET['id_modalidad'] === (int)$mo['id_modalidad'] ? 'selected' : '' ?>><?= e($mo['codigo']) ?> — <?= e($mo['nombre']) ?></option>
+          <option value="<?= (int)$mo['id_modalidad'] ?>" <?= (int)($_GET['id_modalidad'] ?? 0) === (int)$mo['id_modalidad'] ? 'selected' : '' ?>><?= e($mo['codigo']) ?> — <?= e($mo['nombre']) ?></option>
         <?php endforeach; ?>
       </select>
     </div>

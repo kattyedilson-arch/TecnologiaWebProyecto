@@ -112,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Datos para la vista
 $filtroEstado = $_GET['estado'] ?? null;
 $ofertas = $ofertaModel->obtenerTodas($filtroEstado);
-$materias = $materiaModel->obtenerTodas();
+$materias = $materiaModel->obtenerTodas('nombre', 'ASC');
 $turnos = $turnoModel->obtenerTodos();
 
 // Estadísticas (una sola consulta agregada por estado)

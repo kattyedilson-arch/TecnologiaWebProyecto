@@ -33,17 +33,23 @@ $estudianteModel = new EstudianteModel($pdo);
 $materiaModel = new MateriaModel($pdo);
 $ofertaModel = new OfertaModel($pdo);
 $tutoriaModel = new TutoriaModel($pdo);
+$carreraModel = new CarreraModel($pdo);
 
 // Obtener o crear perfil de estudiante (si aún no tiene ficha académica)
 $estudiante = $estudianteModel->obtenerPorUsuario($idUsuario);
 if (!$estudiante) {
     // Si no tiene ficha, asociar a la primera carrera disponible
-    $carreraModel = new CarreraModel($pdo);
     $carreras = $carreraModel->obtenerTodas();
     $idCarreraDefault = !empty($carreras) ? $carreras[0]['id_carrera'] : 1;
     $estudianteModel->guardarOActualizar($idUsuario, $idCarreraDefault, 1, 'RU-' . rand(10000, 99999));
     $estudiante = $estudianteModel->obtenerPorUsuario($idUsuario);
 }
+
+// Datos institucionales de la carrera: alimentan el bloque de metadatos
+// (modelo y sistema de estudio) del formulario. El desplegable de carrera
+// es informativo: el estudiante solicita para SU programa y el backend
+// sigue validando que la oferta pertenezca a su carrera.
+$carrera = $carreraModel->obtenerPorId($estudiante['id_carrera']);
 
 $errores = [];
 
@@ -150,5 +156,21 @@ if (!empty($idsMaterias)) {
     }
 }
 $carreraEstudiante = $estudiante['nombre_carrera'] ?? '';
+
+// Opciones del grupo de botones SISTEMA DE ESTUDIO. La activa es la que
+// declara la carrera del estudiante (columna carreras.sistema_estudio).
+$sistemasEstudio = ['PRESENCIAL', 'HORARIO DE TRABAJO', 'SEMI PRESENCIAL'];
+if (!empty($carrera['sistema_estudio']) && !in_array($carrera['sistema_estudio'], $sistemasEstudio, true)) {
+    // Valor heredado de la BD que no está en el catálogo: se añade para
+    // que el botón activo nunca quede fuera del grupo.
+    $sistemasEstudio[] = $carrera['sistema_estudio'];
+}
+$sistemaActivo = !empty($carrera['sistema_estudio']) ? $carrera['sistema_estudio'] : 'PRESENCIAL';
+
+// Etiqueta de la carrera con su código, p. ej. "Ingeniería de Sistemas (320-04)".
+$carreraEtiqueta = $carreraEstudiante;
+if (!empty($carrera['codigo'])) {
+    $carreraEtiqueta .= ' (' . $carrera['codigo'] . ')';
+}
 
 require_once __DIR__ . '/../views/tutorias/solicitar.php';

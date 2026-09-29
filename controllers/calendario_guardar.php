@@ -54,9 +54,7 @@ if (!$errores && $idCohorte > 0) {
 }
 
 if (!empty($errores)) {
-    foreach ($errores as $error) {
-        setMensaje('danger', $error);
-    }
+    setMensajes('danger', $errores);
     redirigir($volver . ($id > 0 ? '?editar=' . $id : ($idCohorte > 0 ? '?id_cohorte=' . $idCohorte : '')));
 }
 

@@ -34,7 +34,7 @@ include __DIR__ . '/../layouts/header.php';
       </h2>
       <p class="text-white-50 mb-0">Cuerpo docente capacitado para brindar asesorías y reforzamiento académico.</p>
     </div>
-    <a href="usuarios_crear.php" class="btn btn-primary fw-bold d-flex align-items-center gap-2 shadow-sm px-3 py-2 rounded-3" style="border:1px solid rgba(255,255,255,.5);">
+    <a href="usuarios_crear.php?rol=tutor" class="btn btn-primary fw-bold d-flex align-items-center gap-2 shadow-sm px-3 py-2 rounded-3" style="border:1px solid rgba(255,255,255,.5);">
       <i class="bi bi-person-plus-fill"></i>
       <span>Nuevo Tutor</span>
     </a>

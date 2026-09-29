@@ -159,7 +159,7 @@ if (isset($_GET['eliminar_horario'])) {
 // Datos para renderizar la vista
 $materiasAsignadas = $tutorModel->obtenerMaterias($idTutor);
 $idsMateriasAsignadas = array_column($materiasAsignadas, 'id_materia');
-$todasMaterias = $materiaModel->obtenerTodas();
+$todasMaterias = $materiaModel->obtenerTodas('nombre', 'ASC');
 $disponibilidades = $tutorModel->obtenerDisponibilidad($idTutor);
 $turnos = $turnoModel->obtenerTodos();
 

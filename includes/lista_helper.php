@@ -50,7 +50,12 @@ function parametrosLista()
  * Genera la condición SQL de búsqueda con LIKE sobre columnas dadas.
  * @param array  $columnas Columnas permitidas (con alias, p. ej. 'u.nombre')
  * @param string $q        Término de búsqueda
- * @return array ['condicion' => string, 'params' => [':busqueda' => string]]
+ * @return array ['condicion' => string, 'params' => [':busquedaN' => string]]
+ *
+ * Cada columna usa un marcador con nombre propio (:busqueda0, :busqueda1...)
+ * porque la conexión usa sentencias preparadas nativas
+ * (PDO::ATTR_EMULATE_PREPARES = false en includes/Db.php) y MySQL no
+ * admite un mismo marcador repetido: devolvía HY093.
  */
 function condicionBusqueda(array $columnas, $q)
 {
@@ -58,12 +63,15 @@ function condicionBusqueda(array $columnas, $q)
         return ['condicion' => '', 'params' => []];
     }
     $trozos = [];
-    foreach ($columnas as $col) {
-        $trozos[] = trim($col) . " LIKE :busqueda";
+    $params = [];
+    foreach (array_values($columnas) as $i => $col) {
+        $clave = ':busqueda' . $i;
+        $trozos[] = trim($col) . ' LIKE ' . $clave;
+        $params[$clave] = '%' . $q . '%';
     }
     return [
         'condicion' => '(' . implode(' OR ', $trozos) . ')',
-        'params' => [':busqueda' => '%' . $q . '%'],
+        'params' => $params,
     ];
 }
 

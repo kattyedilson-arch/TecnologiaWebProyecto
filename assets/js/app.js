@@ -5,6 +5,7 @@
    - Confirmaciones con SweetAlert2 (confirmarEliminacion,
      mostrarConfirmacion, confirmarEnlace y formularios data-confirm)
    - Auto-ocultado del mensaje flash
+   - Campanita: "Marcar leídas" por AJAX sin recargar la página
    Se carga desde views/layouts/footer.php en las páginas internas.
    ========================================================= */
 
@@ -110,3 +111,57 @@ document.addEventListener('DOMContentLoaded', function () {
     setTimeout(() => { banner.style.transition = 'opacity .4s'; banner.style.opacity = '0'; }, 3500);
   }
 });
+
+// Campanita de notificaciones: "Marcar leídas" se envía por AJAX para no
+// recargar la página. El endpoint responde JSON con el contador de no
+// leídas, que se usa para refrescar el badge y la lista del dropdown.
+(function () {
+  const form = document.getElementById('notifFormMarcarTodas');
+  if (!form) return;
+
+  function refrescarCampanita(noLeidas) {
+    const badge = document.getElementById('notifBadge');
+    if (badge) {
+      badge.textContent = noLeidas > 99 ? '99+' : String(noLeidas);
+      badge.hidden = noLeidas === 0;
+    }
+    if (noLeidas === 0) {
+      // Se retiran los puntos azules de aviso pendiente
+      document.querySelectorAll('#notifAcciones ~ * .badge.rounded-circle, .dropdown-menu .badge.rounded-circle')
+        .forEach(function (punto) { punto.remove(); });
+    }
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    const boton = form.querySelector('button[type="submit"]');
+    if (boton) boton.disabled = true;
+
+    fetch(form.action, {
+      method: 'POST',
+      body: new FormData(form),
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+    })
+      .then(function (r) {
+        return r.json().then(function (datos) { return { ok: r.ok, datos: datos }; });
+      })
+      .then(function (res) {
+        if (!res.ok) throw new Error((res.datos && res.datos.mensaje) || 'No se pudieron marcar las notificaciones.');
+        refrescarCampanita(res.datos.noLeidas || 0);
+        form.remove();
+      })
+      .catch(function (err) {
+        if (boton) boton.disabled = false;
+        if (typeof Swal !== 'undefined') {
+          Swal.fire({
+            title: 'No se pudo completar',
+            text: err.message,
+            icon: 'error',
+            customClass: { popup: 'rounded-4' }
+          });
+        }
+      });
+  });
+})();

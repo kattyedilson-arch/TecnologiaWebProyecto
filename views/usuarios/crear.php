@@ -66,15 +66,15 @@ include __DIR__ . '/../layouts/header.php';
           <small class="text-muted">Información básica y asignación de rol en el sistema.</small>
         </div>
       </div>
-      <form method="POST" autocomplete="off" class="needs-validation" novalidate>
+      <form method="POST" action="/controllers/usuarios_crear.php" autocomplete="off" class="needs-validation" novalidate>
       <?= campoCsrf() ?>
         <div class="row g-3">
           <div class="col-md-6">
             <label class="form-label fw-semibold text-secondary small text-uppercase">Rol del Usuario *</label>
             <select name="id_rol" id="selRol" class="form-select rounded-3 py-2" required>
-              <option value="" disabled <?= !isset($_POST['id_rol']) || $_POST['id_rol'] === '' ? 'selected' : '' ?>>Selecciona un rol...</option>
+              <option value="" disabled <?= $rolPreseleccionado === null ? 'selected' : '' ?>>Selecciona un rol...</option>
               <?php foreach ($roles as $r): ?>
-                <option value="<?= $r['id_rol'] ?>" <?= (isset($_POST['id_rol']) && $_POST['id_rol'] == $r['id_rol']) ? 'selected' : '' ?>>
+                <option value="<?= $r['id_rol'] ?>" <?= (string)$rolPreseleccionado === (string)$r['id_rol'] ? 'selected' : '' ?>>
                   <?= ucfirst(htmlspecialchars($r['nombre_rol'])) ?>
                 </option>
               <?php endforeach; ?>

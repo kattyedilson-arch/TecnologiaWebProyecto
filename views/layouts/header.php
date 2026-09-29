@@ -133,7 +133,7 @@ if (isset($_SESSION['id_usuario'])) {
       <button class="btn position-relative d-flex align-items-center justify-content-center border-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notificaciones" style="width:40px;height:40px;background:transparent;">
         <i class="bi bi-bell fs-5" style="color:#334155;"></i>
         <?php if ($notifNoLeidas > 0): ?>
-        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" style="background:#dc2626;font-size:.6rem;"><?= $notifNoLeidas > 99 ? '99+' : $notifNoLeidas ?></span>
+        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" id="notifBadge" style="background:#dc2626;font-size:.6rem;"><?= $notifNoLeidas > 99 ? '99+' : $notifNoLeidas ?></span>
         <?php endif; ?>
       </button>
       <div class="dropdown-menu dropdown-menu-end p-2" style="width:340px;">
@@ -162,15 +162,17 @@ if (isset($_SESSION['id_usuario'])) {
           </a>
           <?php endforeach; ?>
           <hr class="dropdown-divider my-1">
-          <div class="d-flex justify-content-between px-2 py-1 mt-1">
-            <a class="small fw-semibold text-primary text-decoration-none" href="/controllers/notificaciones_listar.php">Ver todas</a>
-            <form method="POST" action="/controllers/notificaciones_estado.php">
-              <input type="hidden" name="accion" value="todas">
-              <?= campoCsrf() ?>
-              <button class="btn btn-link small p-0 fw-semibold text-muted text-decoration-none" type="submit">Marcar leídas</button>
-            </form>
-          </div>
         <?php endif; ?>
+        <div class="d-flex justify-content-between align-items-center px-2 py-1 mt-1" id="notifAcciones">
+          <a class="small fw-semibold text-primary text-decoration-none" href="/controllers/notificaciones_listar.php">Ver todas</a>
+          <?php if ($notifNoLeidas > 0): ?>
+          <form method="POST" action="/controllers/notificaciones_estado.php" id="notifFormMarcarTodas" class="m-0">
+            <input type="hidden" name="accion" value="todas">
+            <?= campoCsrf() ?>
+            <button class="btn btn-link small p-0 fw-semibold text-muted text-decoration-none" type="submit">Marcar leídas</button>
+          </form>
+          <?php endif; ?>
+        </div>
       </div>
     </div>
 
@@ -203,9 +205,17 @@ if (isset($_SESSION['id_usuario'])) {
   <div class="app-content">
 <?php if ($mensajeFlash): ?>
   <?php $tipoIcono = $mensajeFlash['tipo'] === 'success' ? 'check-circle-fill' : ($mensajeFlash['tipo'] === 'danger' ? 'exclamation-triangle-fill' : 'info-circle-fill'); ?>
-  <div class="alert alert-<?= htmlspecialchars($mensajeFlash['tipo']) ?> d-flex align-items-center gap-2 py-2 px-3 rounded-3 shadow-sm mb-3" data-flash-toast>
+  <div class="alert alert-<?= htmlspecialchars($mensajeFlash['tipo']) ?> d-flex align-items-start gap-2 py-2 px-3 rounded-3 shadow-sm mb-3" data-flash-toast>
     <i class="bi bi-<?= $tipoIcono ?> fs-5 flex-shrink-0"></i>
+    <?php if (!empty($mensajeFlash['textos'])): ?>
+    <ul class="fw-semibold mb-0 ps-3">
+      <?php foreach ($mensajeFlash['textos'] as $textoFlash): ?>
+        <li><?= htmlspecialchars($textoFlash) ?></li>
+      <?php endforeach; ?>
+    </ul>
+    <?php else: ?>
     <div class="fw-semibold"><?= htmlspecialchars($mensajeFlash['texto']) ?></div>
+    <?php endif; ?>
   </div>
 <?php endif; ?>
 <?php else: ?>

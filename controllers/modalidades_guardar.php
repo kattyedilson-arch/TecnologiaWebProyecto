@@ -29,7 +29,10 @@ if (!verificarTokenCsrf()) {
 }
 
 $id = (int)($_POST['id'] ?? 0);
-$codigo   = limpiarTexto($_POST['codigo'] ?? '');
+// El código es corto (MOD-PG): se normaliza para tolerar guiones
+// tipográficos o espacios invisibles pegados desde Word.
+$codigoCrudo = limpiarTexto($_POST['codigo'] ?? '');
+$codigo   = strtoupper(normalizarCodigo($codigoCrudo));
 $nombre   = limpiarTexto($_POST['nombre'] ?? '');
 $descripcion = limpiarTexto($_POST['descripcion'] ?? '');
 $tipo     = $_POST['tipo'] ?? 'documental';
@@ -41,6 +44,13 @@ $tiposValidos = ['documental', 'investigacion', 'practica'];
 $errores = [];
 if ($codigo === '' || $nombre === '') {
     $errores[] = 'El código y el nombre son obligatorios.';
+}
+if ($codigo !== '' && !preg_match('/^[A-Z0-9-]+$/', $codigo)) {
+    $errores[] = 'El código solo admite letras, números y guiones (p. ej. MOD-PG). '
+        . 'Valor recibido: ' . valorVisible($codigoCrudo);
+}
+if (mb_strlen($codigo, 'UTF-8') > 20) {
+    $errores[] = 'El código no puede superar los 20 caracteres.';
 }
 if (!in_array($tipo, $tiposValidos, true)) {
     $errores[] = 'El tipo seleccionado no es válido.';
@@ -55,9 +65,7 @@ if (!$errores && $modalidadModel->existe($codigo, $nombre, $id > 0 ? $id : null)
 }
 
 if (!empty($errores)) {
-    foreach ($errores as $error) {
-        setMensaje('danger', $error);
-    }
+    setMensajes('danger', $errores);
     redirigir($volver . ($id > 0 ? '?editar=' . $id : ''));
 }
 

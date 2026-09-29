@@ -18,11 +18,56 @@ function redirigir($url)
     exit;
 }
 
+// Resuelve la ruta interna a la que se vuelve tras una acción POST.
+// El Referer del navegador llega como URL absoluta ("http://host/ruta"),
+// así que se toma solo la ruta interna; cualquier destino externo o
+// malformado cae en la ruta por defecto (evita open redirect).
+function destinoSeguro($referer, $porDefecto = '/controllers/notificaciones_listar.php')
+{
+    $porDefecto = '/' . ltrim((string)$porDefecto, '/');
+    $referer = trim((string)$referer);
+    if ($referer === '') {
+        return $porDefecto;
+    }
+
+    // Ya viene como ruta interna desde la raíz ("/controllers/x.php")
+    if (str_starts_with($referer, '/') && !str_starts_with($referer, '//') && !str_starts_with($referer, '/\\')) {
+        return $referer;
+    }
+
+    // URL absoluta: se conserva únicamente la ruta y su query string
+    $ruta = parse_url($referer, PHP_URL_PATH);
+    if (empty($ruta) || !str_starts_with($ruta, '/') || str_starts_with($ruta, '//')) {
+        return $porDefecto;
+    }
+    $query = parse_url($referer, PHP_URL_QUERY);
+    return $ruta . ($query ? '?' . $query : '');
+}
+
 // Establece un mensaje flash (se muestra una sola vez)
 function setMensaje($tipo, $texto)
 {
     iniciarSesion();
     $_SESSION['flash'] = ['tipo' => $tipo, 'texto' => $texto];
+}
+
+// Establece varios mensajes de error en un solo flash (se muestran todos).
+// Antes se llamaba a setMensaje() en bucle y cada iteración sobrescribía la
+// anterior, por lo que el usuario solo veía el último error.
+function setMensajes($tipo, array $textos)
+{
+    iniciarSesion();
+    $textos = array_values(array_filter(array_map('strval', $textos), function ($t) {
+        return trim($t) !== '';
+    }));
+    if (empty($textos)) {
+        return;
+    }
+    $_SESSION['flash'] = [
+        'tipo'   => $tipo,
+        'texto'  => implode(' ', $textos),
+        'textos' => $textos,
+    ];
 }
 
 // Obtiene (y elimina) el mensaje flash actual, si existe
@@ -41,6 +86,48 @@ function getMensaje()
 function limpiarTexto($valor)
 {
     return trim(strip_tags((string)($valor ?? '')));
+}
+
+// Normaliza un código corto (AAAA-N, MOD-PG, C-2026-1) para que la validación
+// por expresión regular no falle por caracteres invisibles o guiones
+// tipográficos que el usuario pega desde Word/Docs: "2026–1" (en dash) o
+// "2026 - 1" se convierten en "2026-1". Para nombres con espacios se debe
+// seguir usando limpiarTexto().
+function normalizarCodigo($valor)
+{
+    $texto = strtr((string)($valor ?? ''), [
+        // Guiones y rayas tipográficos -> guion ASCII
+        "\u{2010}" => '-', "\u{2011}" => '-', "\u{2012}" => '-',
+        "\u{2013}" => '-', "\u{2014}" => '-', "\u{2015}" => '-',
+        "\u{2212}" => '-', "\u{FE58}" => '-', "\u{FF0D}" => '-',
+        // Espacios no separables -> espacio
+        "\u{00A0}" => ' ', "\u{202F}" => ' ', "\u{2007}" => ' ', "\u{2009}" => ' ',
+        // Zero-width y soft hyphen (habitual al copiar desde PDF): se eliminan
+        "\u{200B}" => '', "\u{200C}" => '', "\u{200D}" => '', "\u{FEFF}" => '',
+        "\u{00AD}" => '',
+    ]);
+    // Quita el resto de espacios y caracteres de control (bytes ASCII).
+    $texto = preg_replace('/[\x00-\x20\x7F]/', '', $texto);
+    // Colapsa guiones repetidos ("C--2026-1" -> "C-2026-1").
+    $texto = preg_replace('/-{2,}/', '-', $texto);
+    return trim((string)$texto);
+}
+
+// Devuelve el valor recibido marcando los caracteres invisibles como
+// [nbsp], [guion], [zws]... para que en un mensaje de error se vea qué
+// carácter concreto provocó el rechazo.
+function valorVisible($valor)
+{
+    $texto = strtr((string)($valor ?? ''), [
+        "\u{00A0}" => '[nbsp]', "\u{202F}" => '[nnbsp]', "\u{2007}" => '[figsp]',
+        "\u{2009}" => '[thin]', "\u{200B}" => '[zws]',  "\u{200C}" => '[zwnj]',
+        "\u{200D}" => '[zwj]',  "\u{FEFF}" => '[bom]',
+        "\u{2010}" => '[guion]', "\u{2011}" => '[guion]', "\u{2012}" => '[guion]',
+        "\u{2013}" => '[guion]', "\u{2014}" => '[guion]', "\u{2015}" => '[guion]',
+        "\u{2212}" => '[menos]', "\u{FE58}" => '[guion]', "\u{FF0D}" => '[guion]',
+    ]);
+    $texto = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '[ctrl]', $texto);
+    return mb_strimwidth($texto, 0, 40, '…', 'UTF-8');
 }
 
 // Escapa una cadena para salida segura en HTML (alias corto de htmlspecialchars).

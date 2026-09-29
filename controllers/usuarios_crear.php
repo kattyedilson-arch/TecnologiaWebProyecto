@@ -14,6 +14,7 @@ require_once __DIR__ . '/../models/UsuarioModel.php';
 require_once __DIR__ . '/../models/RolModel.php';
 require_once __DIR__ . '/../models/CarreraModel.php';
 require_once __DIR__ . '/../models/EstudianteModel.php';
+require_once __DIR__ . '/../models/TutorModel.php';
 
 requerirRol('administrador');
 
@@ -21,25 +22,65 @@ $usuarioModel = new UsuarioModel($pdo);
 $rolModel = new RolModel($pdo);
 $carreraModel = new CarreraModel($pdo);
 $estudianteModel = new EstudianteModel($pdo);
+$tutorModel = new TutorModel($pdo);
 $errores = [];
 
-// Id del rol "estudiante" (para saber si debe pedirse carrera y semestre)
+// Ids de los roles "estudiante" y "tutor" (para las fichas de perfil)
 $roles = $rolModel->obtenerTodos();
 $idRolEstudiante = null;
+$idRolTutor = null;
 foreach ($roles as $r) {
-    if (strtolower(trim($r['nombre_rol'])) === 'estudiante') {
+    $nombreRol = strtolower(trim($r['nombre_rol']));
+    if ($nombreRol === 'estudiante') {
         $idRolEstudiante = (int)$r['id_rol'];
-        break;
+    } elseif ($nombreRol === 'tutor') {
+        $idRolTutor = (int)$r['id_rol'];
     }
 }
 $carreras = $carreraModel->obtenerTodas();
+
+// Rol preseleccionado en el formulario:
+//  - si vuelve de un POST con errores, se mantiene lo que el admin eligió;
+//  - si llega ?rol=<nombre> (botón "Nuevo Tutor"), se marca ese rol.
+// El valor de ?rol solo se acepta si coincide con un rol existente.
+$rolPreseleccionado = null;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_rol']) && $_POST['id_rol'] !== '') {
+    $rolPreseleccionado = (int)$_POST['id_rol'];
+} elseif (isset($_GET['rol']) && $_GET['rol'] !== '') {
+    $rolPedido = strtolower(trim($_GET['rol']));
+    foreach ($roles as $r) {
+        if (strtolower(trim($r['nombre_rol'])) === $rolPedido) {
+            $rolPreseleccionado = (int)$r['id_rol'];
+            break;
+        }
+    }
+}
+
+/**
+ * Devuelve el listado al que corresponde volver tras guardar, según el rol
+ * con el que quedó registrado el usuario. Rutas absolutas para no depender
+ * de la URL desde la que se envió el formulario.
+ * @param int $idRolElegido
+ * @return string
+ */
+function listadoTrasGuardar($idRolElegido)
+{
+    global $idRolTutor, $idRolEstudiante;
+    if ($idRolTutor !== null && (int)$idRolElegido === $idRolTutor) {
+        return '/controllers/tutores_listar.php';
+    }
+    if ($idRolEstudiante !== null && (int)$idRolElegido === $idRolEstudiante) {
+        return '/controllers/estudiantes_listar.php';
+    }
+    return '/controllers/usuarios_listar.php';
+}
 
 // ===== Procesamiento del formulario (POST) =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Protección CSRF: la solicitud debe traer el token de la sesión
     if (!verificarTokenCsrf()) {
         setMensaje('danger', 'La solicitud expiró. Vuelve a intentarlo.');
-        redirigir('usuarios_crear.php');
+        redirigir('/controllers/usuarios_crear.php');
     }
 
     // Se capturan y normalizan los datos recibidos
@@ -123,8 +164,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
             }
 
+            // Si es un tutor se crea su ficha docente. Sin ella el usuario
+            // queda guardado pero NO aparece en el listado de tutores.
+            $esTutor = ($idRolTutor !== null && (int)$datos['id_rol'] === $idRolTutor);
+            if ($esTutor) {
+                $tutorModel->crearFicha($idNuevo);
+            }
+
             setMensaje('success', 'Usuario registrado correctamente.');
-            redirigir('usuarios_listar.php');
+            redirigir(listadoTrasGuardar($datos['id_rol']));
         } catch (PDOException $e) {
             // Excepción por las restricciones UNIQUE de correo o usuario
             $errores[] = "No se pudo registrar: el correo o el usuario ya existen en el sistema.";

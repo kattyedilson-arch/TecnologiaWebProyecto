@@ -19,3 +19,7 @@ assets/uploads/perfiles/*.png
 assets/uploads/perfiles/*.gif
 assets/uploads/perfiles/*.webp
 !assets/uploads/perfiles/.htaccess
+
+# Avales (documentos legales de identidad que suben los estudiantes)
+assets/uploads/avales/*
+!assets/uploads/avales/.htaccess

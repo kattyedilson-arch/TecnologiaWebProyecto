@@ -27,7 +27,7 @@ include __DIR__ . '/../layouts/header.php';
       </h2>
       <p class="text-white-50 mb-0">Listado de alumnos habilitados para solicitar tutorías académicas.</p>
     </div>
-    <a href="usuarios_crear.php" class="btn btn-primary fw-bold d-flex align-items-center gap-2 shadow-sm px-3 py-2 rounded-3" style="border:1px solid rgba(255,255,255,.5);">
+    <a href="usuarios_crear.php?rol=estudiante" class="btn btn-primary fw-bold d-flex align-items-center gap-2 shadow-sm px-3 py-2 rounded-3" style="border:1px solid rgba(255,255,255,.5);">
       <i class="bi bi-person-plus-fill"></i>
       <span>Nuevo Estudiante</span>
     </a>
@@ -72,7 +72,7 @@ include __DIR__ . '/../layouts/header.php';
 
 <div class="card card-custom shadow-sm overflow-hidden">
   <div class="card-header bg-white py-3 border-0 d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2">
-    <?= renderBuscador('Buscar por nombre, carrera, R.U. o correo...') ?>
+    <div id="buscadorEstudiantes"><?= renderBuscador('Buscar por nombre, usuario, carrera, R.U. o correo...') ?></div>
     <span class="badge text-bg-light border px-3 py-2"><?= $resultado['total'] ?> estudiante(s)</span>
   </div>
 
@@ -138,5 +138,54 @@ include __DIR__ . '/../layouts/header.php';
   <!-- Paginación server-side -->
   <div class="px-3 pb-3"><?= renderPaginacion($resultado) ?></div>
 </div>
+
+<script>
+  // =========================================================
+  // BUSCADOR DE ESTUDIANTES
+  // ---------------------------------------------------------
+  // El listado se pagina de a 15 filas, así que filtrar solo con
+  // las filas ya pintadas daría falsos negativos (el nombre
+  // buscado puede estar en la página 2). Por eso hay dos capas:
+  //   1) keyup  -> filtra al instante lo que se ve en pantalla;
+  //   2) retardo de 400 ms -> envía el formulario GET para que el
+  //      servidor busque en los 51 registros reales y la paginación
+  //      se recalcule (la insignia "N estudiante(s)" lo refleja).
+  // El contenedor #buscadorEstudiantes aísla el formulario: la
+  // consulta es server-side y no busca dentro de la URL.
+  // =========================================================
+  (function () {
+    const contenedor = document.getElementById('buscadorEstudiantes');
+    const formulario = contenedor ? contenedor.querySelector('form') : null;
+    const campo = formulario ? formulario.querySelector('input[name="q"]') : null;
+    if (!campo) return;
+
+    const filas = document.querySelectorAll('#tablaEstudiantes tbody tr');
+    const RETARDO_MS = 400;
+    let temporizador = null;
+    // No se recarga la página si la URL ya refleja el texto buscado
+    const qEnUrl = new URLSearchParams(window.location.search).get('q') || '';
+
+    const filtrarEnPantalla = function () {
+      const valor = campo.value.trim().toLowerCase();
+      filas.forEach(fila => {
+        // La fila "colspan" de "no hay resultados" se deja siempre visible
+        const esVacia = fila.querySelector('td[colspan]') !== null;
+        fila.style.display = (esVacia || fila.textContent.toLowerCase().includes(valor)) ? '' : 'none';
+      });
+    };
+
+    const buscarEnServidor = function () {
+      // Al enviar, el buscador se limpia los parámetros que ya no aplican
+      if (campo.value.trim() === qEnUrl) return;
+      formulario.submit();
+    };
+
+    campo.addEventListener('input', function () {
+      filtrarEnPantalla();
+      clearTimeout(temporizador);
+      temporizador = setTimeout(buscarEnServidor, RETARDO_MS);
+    });
+  })();
+</script>
 
 <?php include __DIR__ . '/../layouts/footer.php'; ?>

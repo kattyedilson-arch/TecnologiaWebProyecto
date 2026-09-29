@@ -89,9 +89,9 @@ $totalImpartidas = count(array_filter($materias, fn($m) => $m['total_tutores'] >
     <table class="table table-hover align-middle mb-0" id="tablaMaterias">
       <thead class="table-light text-muted text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">
         <tr>
-          <th class="ps-4">ID</th>
-          <th>Nombre de la Materia</th>
-          <th>Carrera Universitaria</th>
+          <th class="ps-4"><?= enlaceOrden($col, $dir, 'id', $titulosOrden) ?></th>
+          <th><?= enlaceOrden($col, $dir, 'nombre', $titulosOrden) ?></th>
+          <th><?= enlaceOrden($col, $dir, 'carrera', $titulosOrden) ?></th>
           <th>Tutores Asignados</th>
           <th class="text-end pe-4">Acciones</th>
         </tr>

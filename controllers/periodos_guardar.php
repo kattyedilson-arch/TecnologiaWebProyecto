@@ -27,7 +27,11 @@ if (!verificarTokenCsrf()) {
 }
 
 $id = (int)($_POST['id'] ?? 0);
-$nombre    = limpiarTexto($_POST['nombre'] ?? '');
+// El nombre es un código (AAAA-N): se normaliza para que un guion tipográfico
+// o un espacio invisible pegado desde Word no invalide el formato. Se guarda
+// el valor crudo aparte, solo para poder mostrarlo si aun así falla.
+$nombreCrudo = limpiarTexto($_POST['nombre'] ?? '');
+$nombre      = normalizarCodigo($nombreCrudo);
 $inicio    = limpiarTexto($_POST['fecha_inicio'] ?? '');
 $fin       = limpiarTexto($_POST['fecha_fin'] ?? '');
 $estado    = $_POST['estado'] ?? 'abierto';
@@ -38,8 +42,9 @@ $errores = [];
 if ($nombre === '') {
     $errores[] = 'El nombre del periodo es obligatorio.';
 }
-if (!preg_match('/^\d{4}-\d{2}$/', $nombre)) {
-    $errores[] = 'El nombre debe seguir el formato "AAAA-N" (p. ej. 2026-1).';
+if ($nombre !== '' && !preg_match('/^\d{4}-\d{1,2}$/', $nombre)) {
+    $errores[] = 'El nombre debe seguir el formato "AAAA-N" (p. ej. 2026-1). '
+        . 'Valor recibido: ' . valorVisible($nombreCrudo);
 }
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $inicio) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fin)) {
     $errores[] = 'Las fechas de inicio y fin son obligatorias.';
@@ -56,9 +61,7 @@ if (!$errores && $periodoModel->existeNombre($nombre, $id > 0 ? $id : null)) {
 }
 
 if (!empty($errores)) {
-    foreach ($errores as $error) {
-        setMensaje('danger', $error);
-    }
+    setMensajes('danger', $errores);
     redirigir($volver . ($id > 0 ? '?editar=' . $id : ''));
 }
 

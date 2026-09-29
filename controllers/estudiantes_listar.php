@@ -15,9 +15,11 @@ requerirRol('administrador');
 
 $p = parametrosLista();
 
-// Búsqueda por nombre, apellido, R.U., carrera o correo
+// Búsqueda por nombre, apellido, usuario, R.U., carrera o correo.
+// 'u.usuario' se incluye porque la tabla muestra ese dato en cada fila:
+// buscar por él es lo esperable aunque no esté en el placeholder.
 $busqueda = condicionBusqueda(
-    ['u.nombre', 'u.apellido', 'e.registro_universitario', 'c.nombre_carrera', 'u.correo'],
+    ['u.nombre', 'u.apellido', 'u.usuario', 'e.registro_universitario', 'c.nombre_carrera', 'u.correo'],
     $p['q']
 );
 $filtros = ["r.nombre_rol = 'estudiante'"];

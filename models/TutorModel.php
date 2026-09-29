@@ -86,6 +86,35 @@ class TutorModel
     }
 
     /**
+     * Crea la ficha de tutor (fila en 'tutores') para un usuario que
+     * tiene el rol "tutor" pero aún no tenía perfil docente.
+     *
+     * Sin esta fila el usuario no aparece en el listado de tutores, que
+     * se construye sobre 'tutores' INNER JOIN 'usuarios'. Es idempotente:
+     * si la ficha ya existe no inserta nada.
+     *
+     * NO se borra la ficha cuando el usuario deja de tener el rol tutor:
+     * seis tablas (tutorias, ofertas_admin, tutor_materia,
+     * disponibilidad_tutor, oferta_respuesta, asignaciones_tutor) tienen
+     * clave foránea a 'tutor' y su historial debe conservarse. El listado
+     * filtra por roles.nombre_rol, así que el tutor degradado desaparece
+     * de la planta docente sin perder datos.
+     *
+     * @param int $id_usuario Usuario propietario del perfil
+     * @return int|null id_tutor creado, o null si ya existía
+     */
+    public function crearFicha($id_usuario)
+    {
+        $id_usuario = (int)$id_usuario;
+        if ($id_usuario <= 0 || $this->obtenerPorUsuario($id_usuario)) {
+            return null;
+        }
+        $stmt = $this->pdo->prepare("INSERT INTO tutores (id_usuario) VALUES (:id_usuario)");
+        $stmt->execute([':id_usuario' => $id_usuario]);
+        return (int)$this->pdo->lastInsertId();
+    }
+
+    /**
      * Actualiza la especialidad y biografía del perfil docente.
      * @param int $id_tutor Identificador del tutor
      * @param string $especialidad Especialidad profesional

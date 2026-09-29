@@ -25,7 +25,10 @@ if (!verificarTokenCsrf()) {
 }
 
 $id = (int)($_POST['id'] ?? 0);
-$codigo = strtoupper(limpiarTexto($_POST['codigo'] ?? ''));
+// El código es corto (C-2026-1): se normaliza para tolerar guiones
+// tipográficos o espacios invisibles pegados desde Word.
+$codigoCrudo = limpiarTexto($_POST['codigo'] ?? '');
+$codigo = strtoupper(normalizarCodigo($codigoCrudo));
 $nombre = limpiarTexto($_POST['nombre'] ?? '');
 $idPeriodo = (int)($_POST['id_periodo'] ?? 0);
 $inicio = limpiarTexto($_POST['fecha_inicio'] ?? '');
@@ -36,8 +39,12 @@ $errores = [];
 if ($codigo === '' || $nombre === '') {
     $errores[] = 'El código y el nombre de la cohorte son obligatorios.';
 }
-if (!preg_match('/^[A-Z0-9-]+$/', $codigo)) {
-    $errores[] = 'El código solo admite letras, números y guiones (p. ej. C-2026-1).';
+if ($codigo !== '' && !preg_match('/^[A-Z0-9-]+$/', $codigo)) {
+    $errores[] = 'El código solo admite letras, números y guiones (p. ej. C-2026-1). '
+        . 'Valor recibido: ' . valorVisible($codigoCrudo);
+}
+if (mb_strlen($codigo, 'UTF-8') > 30) {
+    $errores[] = 'El código no puede superar los 30 caracteres.';
 }
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $inicio) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fin)) {
     $errores[] = 'Las fechas de inicio y fin son obligatorias.';
@@ -54,9 +61,7 @@ if (!$errores && $cohorteModel->existe($codigo, $nombre, $id > 0 ? $id : null)) 
 }
 
 if (!empty($errores)) {
-    foreach ($errores as $error) {
-        setMensaje('danger', $error);
-    }
+    setMensajes('danger', $errores);
     redirigir($volver . ($id > 0 ? '?editar=' . $id : ''));
 }
 
