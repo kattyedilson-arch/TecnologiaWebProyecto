@@ -1,0 +1,16 @@
+# =========================================================
+# Seguridad básica del sitio (Apache)
+# =========================================================
+
+# No listar directorios y ocultar versión del servidor
+Options -Indexes
+ServerSignature Off
+
+# Bloquear archivos de entorno, logs y temporales
+<FilesMatch "(^\.env|\.env\.example$|\.log$|prueba\.txt$)">
+  Require all denied
+</FilesMatch>
+
+# Bloquear acceso DIRECTO a directorios internos de la aplicación
+# (código, configuración y scripts; solo se incluyen por PHP en el servidor)
+RedirectMatch 403 ^/(includes|config|scripts|scripts_bd|scripts_bd_legacy|database)/.*

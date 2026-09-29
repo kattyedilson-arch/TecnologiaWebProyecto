@@ -1,0 +1,11 @@
+-- =========================================================
+-- MIGRACIÓN: Foto de perfil de usuarios
+-- ---------------------------------------------------------
+-- Añade la columna 'foto_perfil' a la tabla 'usuarios'.
+-- Sirve para bases ya creadas (el init.sql solo corre en el
+-- primer arranque del volumen MySQL). Aplicar con:
+--
+--   docker compose exec -T db mysql -u tutorias_user -p12345 tutorias_db < scripts_bd/migracion_foto_perfil.sql
+--
+-- =========================================================
+ALTER TABLE usuarios ADD COLUMN foto_perfil VARCHAR(255) NULL AFTER telefono;

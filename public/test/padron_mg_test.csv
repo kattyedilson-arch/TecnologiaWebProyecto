@@ -1,0 +1,13 @@
+registro_universitario;nombre;apellido;correo;modalidad;cohorte
+20210001;Juan;Perez;juan.perez@upds.edu.bo;TESIS;2024-1
+20210002;Maria;Garcia;maria.garcia@upds.edu.bo;PROYECTO;2024-1
+20210003;Carlos;Lopez;carlos.lopez@upds.edu.bo;TESIS;2024-2
+20210004;Ana;Martinez;ana.martinez@upds.edu.bo;INVALIDA;2024-1
+20210005;Luis;Rodriguez;luis.rodriguez@upds.edu.bo;TESIS;INEXISTENTE
+20210006;Sofia;Fernandez;sofia.fernandez@upds.edu.bo;TESIS;2024-1
+20210007;Diego;Gomez;diego.gomez@upds.edu.bo;TESIS;2024-1
+;Pedro;Sanchez;pedro.sanchez@upds.edu.bo;TESIS;2024-1
+20210008;Laura;Torres;laura.torres@upds.edu.bo;;2024-1
+20210009;Roberto;Vargas;roberto.vargas@upds.edu.bo;PROYECTO;
+20210010;Patricia;Ruiz;patricia.ruiz@upds.edu.bo;TESIS;2024-1
+20210011;Miguel;Herrera;miguel.herrera@upds.edu.bo;TESIS;2024-1
